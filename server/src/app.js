@@ -49,25 +49,24 @@ app.get("/{*path}", (req, res) =>
 );
 app.use((err, req, res, next) => {
   if (err instanceof ZodError)
-    return res
-      .status(400)
-      .json({
-        message: err.issues
-          .map((i) => `${i.path.join(".")}: ${i.message}`)
-          .join("; "),
-      });
+    return res.status(400).json({
+      message: err.issues
+        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .join("; "),
+    });
   if (err.code === 11000)
     return res
       .status(409)
-      .json({ message: "This SKU, name or checkout reference already exists" });
+      .json({
+        message:
+          "This email, workspace code, SKU, package name or request reference already exists",
+      });
   const status = err.status || (err.code === "LIMIT_FILE_SIZE" ? 400 : 500);
   if (status >= 500) console.error(err.message);
-  res
-    .status(status)
-    .json({
-      message:
-        status >= 500
-          ? "The operation could not be completed. Please try again."
-          : err.message,
-    });
+  res.status(status).json({
+    message:
+      status >= 500
+        ? "The operation could not be completed. Please try again."
+        : err.message,
+  });
 });

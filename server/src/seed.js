@@ -1,13 +1,19 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { randomUUID } from "node:crypto";
 import { connect } from "./config.js";
-import * as M from "./models.js";
+import * as legacy from "./models.js";
+import * as platform from "./platform-models.js";
+import { readyTenant } from "./tenant-db.js";
+import { onboard } from "./saas-services.js";
 import { changeStock, atomic } from "./services.js";
 try {
   await connect();
-  await Promise.all(Object.values(M).map((m) => m.init()));
-  const email = process.env.ADMIN_EMAIL?.toLowerCase(),
-    password = process.env.ADMIN_PASSWORD;
+  await Promise.all(
+    [...Object.values(legacy), ...Object.values(platform)].map((m) => m.init()),
+  );
+  const email = process.env.PLATFORM_ADMIN_EMAIL?.toLowerCase(),
+    password = process.env.PLATFORM_ADMIN_PASSWORD;
   if (
     !email ||
     !password ||
@@ -15,94 +21,161 @@ try {
     password.startsWith("replace-")
   )
     throw new Error(
-      "Set ADMIN_EMAIL and a strong ADMIN_PASSWORD (12+ characters) in server/.env",
+      "Set PLATFORM_ADMIN_EMAIL and a strong PLATFORM_ADMIN_PASSWORD (12+ characters).",
     );
-  let user = await M.User.findOne({ email });
-  if (!user)
-    user = await M.User.create({
+  let owner = await legacy.User.findOne({ email });
+  if (owner && owner.role !== "platform_admin")
+    throw new Error(
+      "Platform admin email already belongs to a client. Use a separate address.",
+    );
+  if (!owner)
+    owner = await legacy.User.create({
       email,
       passwordHash: await bcrypt.hash(password, 12),
+      role: "platform_admin",
+      name: "Platform administrator",
     });
-  await M.ShopSettings.updateOne(
-    { singleton: "shop" },
+  for (const input of [
     {
-      $setOnInsert: {
-        shopName: "Corner & Co.",
-        address: "Your shop address",
-        currency: "INR",
-        invoicePrefix: "INV",
-        defaultTax: 0,
-        invoiceFooter: "Thank you for shopping local.",
-        printFormat: "A4",
-      },
+      name: "Starter",
+      description: "The essentials for a growing shop",
+      monthlyPrice: 99900,
+      yearlyPrice: 999000,
+      maxProducts: 100,
+      maxUsers: 2,
+      reportsEnabled: false,
+      imagesEnabled: false,
     },
-    { upsert: true },
-  );
-  const names = [
-    "Grocery",
-    "Beverages",
-    "Electronics",
-    "Personal Care",
-    "Stationery",
-  ];
-  const cats = {};
-  for (const name of names)
-    cats[name] = await M.Category.findOneAndUpdate(
-      { name },
-      { $setOnInsert: { name, isActive: true } },
-      { upsert: true, new: true },
+    {
+      name: "Growth",
+      description: "More room for your products and people",
+      monthlyPrice: 199900,
+      yearlyPrice: 1999000,
+      maxProducts: 1000,
+      maxUsers: 5,
+      reportsEnabled: true,
+      imagesEnabled: true,
+    },
+    {
+      name: "Business",
+      description: "Built for a busy retail operation",
+      monthlyPrice: 399900,
+      yearlyPrice: 3999000,
+      maxProducts: 10000,
+      maxUsers: 20,
+      reportsEnabled: true,
+      imagesEnabled: true,
+    },
+  ])
+    await platform.Package.updateOne(
+      { name: input.name },
+      { $setOnInsert: input },
+      { upsert: true },
     );
-  const products = [
-    ["Basmati rice", "GRO-001", "Grocery", 12500, 42, "kg", 5, 5],
-    ["Whole wheat flour", "GRO-002", "Grocery", 6500, 28, "kg", 5, 0],
-    ["Organic honey", "GRO-003", "Grocery", 28500, 4, "pcs", 5, 5],
-    ["Cold brew coffee", "BEV-001", "Beverages", 15000, 24, "pcs", 5, 5],
-    ["Sparkling water", "BEV-002", "Beverages", 6000, 36, "pcs", 5, 5],
-    ["USB-C cable", "ELE-001", "Electronics", 29900, 12, "pcs", 5, 18],
-    ["Wireless mouse", "ELE-002", "Electronics", 79900, 0, "pcs", 3, 18],
-    ["Hand wash", "PER-001", "Personal Care", 12000, 18, "pcs", 5, 18],
-    ["A5 notebook", "STA-001", "Stationery", 9500, 3, "pcs", 5, 12],
-    ["Gel pen · blue", "STA-002", "Stationery", 2500, 60, "pcs", 10, 12],
-  ];
-  for (const [
-    name,
-    sku,
-    category,
-    sellingPrice,
-    stockQuantity,
-    unit,
-    minimumStock,
-    taxPercent,
-  ] of products) {
-    if (await M.Product.exists({ sku })) continue;
-    await atomic(async (session) => {
-      const [p] = await M.Product.create(
-        [
-          {
-            name,
-            sku,
-            category: cats[category]._id,
-            sellingPrice,
-            purchasePrice: Math.round(sellingPrice * 0.7),
-            unit,
-            minimumStock,
-            taxPercent,
-            stockQuantity: 0,
-          },
-        ],
-        { session },
+  if (process.env.SEED_DEMO === "true") {
+    const demoEmail = process.env.ADMIN_EMAIL?.toLowerCase(),
+      demoPassword = process.env.ADMIN_PASSWORD;
+    if (!demoEmail || !demoPassword || demoPassword.length < 12)
+      throw new Error("Set separate demo ADMIN_EMAIL and ADMIN_PASSWORD");
+    let tenant = await platform.Tenant.findOne({ slug: "corner-and-co" });
+    if (!tenant) {
+      const plan = await platform.Package.findOne({ name: "Growth" });
+      tenant = await onboard(
+        {
+          name: "Corner & Co.",
+          slug: "corner-and-co",
+          ownerName: "Demo shop owner",
+          ownerEmail: demoEmail,
+          ownerPassword: demoPassword,
+          phone: "",
+          planId: plan.id,
+          cycle: "monthly",
+          paymentMethod: "Other",
+          paymentReference: "Local demo — no real payment",
+          note: "Demo seed",
+          idempotencyKey: randomUUID(),
+          trialDays: 14,
+        },
+        owner,
       );
-      await changeStock(
-        p,
-        stockQuantity,
-        "Opening",
-        "Demo opening stock",
-        user.id,
-        session,
+      await legacy.User.updateOne(
+        { tenantId: tenant.id, email: demoEmail },
+        { $set: { mustChangePassword: false } },
       );
+    }
+    const user = await legacy.User.findOne({
+      tenantId: tenant.id,
+      email: demoEmail,
     });
+    const M = await readyTenant(tenant.id);
+    const names = [
+      "Grocery",
+      "Beverages",
+      "Electronics",
+      "Personal Care",
+      "Stationery",
+    ];
+    const cats = {};
+    for (const name of names)
+      cats[name] = await M.Category.findOneAndUpdate(
+        { name },
+        { $setOnInsert: { name, isActive: true } },
+        { upsert: true, new: true },
+      );
+    const products = [
+      ["Basmati rice", "GRO-001", "Grocery", 12500, 42, "kg", 5, 5],
+      ["Whole wheat flour", "GRO-002", "Grocery", 6500, 28, "kg", 5, 0],
+      ["Organic honey", "GRO-003", "Grocery", 28500, 4, "pcs", 5, 5],
+      ["Cold brew coffee", "BEV-001", "Beverages", 15000, 24, "pcs", 5, 5],
+      ["Sparkling water", "BEV-002", "Beverages", 6000, 36, "pcs", 5, 5],
+      ["USB-C cable", "ELE-001", "Electronics", 29900, 12, "pcs", 5, 18],
+      ["Wireless mouse", "ELE-002", "Electronics", 79900, 0, "pcs", 3, 18],
+      ["Hand wash", "PER-001", "Personal Care", 12000, 18, "pcs", 5, 18],
+      ["A5 notebook", "STA-001", "Stationery", 9500, 3, "pcs", 5, 12],
+      ["Gel pen · blue", "STA-002", "Stationery", 2500, 60, "pcs", 10, 12],
+    ];
+    for (const [
+      name,
+      sku,
+      category,
+      sellingPrice,
+      stockQuantity,
+      unit,
+      minimumStock,
+      taxPercent,
+    ] of products) {
+      if (await M.Product.exists({ sku })) continue;
+      await atomic(async (session) => {
+        const [p] = await M.Product.create(
+          [
+            {
+              name,
+              sku,
+              category: cats[category]._id,
+              sellingPrice,
+              purchasePrice: Math.round(sellingPrice * 0.7),
+              unit,
+              minimumStock,
+              taxPercent,
+              stockQuantity: 0,
+            },
+          ],
+          { session },
+        );
+        await changeStock(
+          p,
+          stockQuantity,
+          "Opening",
+          "Demo opening stock",
+          user.id,
+          session,
+          "",
+          M,
+        );
+      });
+    }
   }
-  console.log("Seed complete. Existing records and passwords were preserved.");
+  console.log("Platform seed complete. Existing accounts and data preserved.");
 } catch (e) {
   console.error(e.message);
   process.exitCode = 1;

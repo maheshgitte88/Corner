@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "./components";
 import React, { useState } from "react";
 import {
   Plus,
@@ -28,6 +29,7 @@ export function ProductForm({
   const [image, setImage] = useState({
       imageUrl: product?.imageUrl || "",
       imageKey: product?.imageKey || "",
+      imageProvider: product?.imageProvider || "",
     }),
     [uploading, setUploading] = useState(false),
     [uploadError, setUploadError] = useState("");
@@ -200,7 +202,9 @@ export function ProductForm({
             <button
               type="button"
               className="text-button"
-              onClick={() => setImage({ imageUrl: "", imageKey: "" })}
+              onClick={() =>
+                setImage({ imageUrl: "", imageKey: "", imageProvider: "" })
+              }
             >
               Remove image
             </button>
@@ -215,7 +219,13 @@ export function ProductForm({
     </Modal>
   );
 }
-export default function Products({ data, inventory = false, reload, notify }) {
+export default function Products({
+  data,
+  inventory = false,
+  reload,
+  notify,
+  readOnly = false,
+}) {
   const [query, setQuery] = useState(""),
     [category, setCategory] = useState(""),
     [status, setStatus] = useState(""),
@@ -254,7 +264,8 @@ export default function Products({ data, inventory = false, reload, notify }) {
             : "Manage your products, prices and everyday essentials."
         }
         action={
-          !inventory && (
+          !inventory &&
+          !readOnly && (
             <button className="button" onClick={() => setEdit({})}>
               <Plus size={18} /> Add product
             </button>
@@ -300,7 +311,7 @@ export default function Products({ data, inventory = false, reload, notify }) {
           />
         ) : (
           <div className="table-wrap">
-            <table>
+            <ResponsiveTable>
               <thead>
                 <tr>
                   <th>Product</th>
@@ -342,6 +353,7 @@ export default function Products({ data, inventory = false, reload, notify }) {
                           <>
                             <button
                               className="button small secondary"
+                              disabled={readOnly}
                               onClick={() => setAdjust(p)}
                             >
                               <SlidersHorizontal size={14} /> Adjust
@@ -371,6 +383,7 @@ export default function Products({ data, inventory = false, reload, notify }) {
                             <button
                               className="icon-button"
                               aria-label={`Edit ${p.name}`}
+                              disabled={readOnly}
                               onClick={() => setEdit(p)}
                             >
                               <Pencil size={17} />
@@ -379,6 +392,7 @@ export default function Products({ data, inventory = false, reload, notify }) {
                               <button
                                 className="icon-button"
                                 aria-label={`Archive ${p.name}`}
+                                disabled={readOnly}
                                 onClick={() => setArchive(p)}
                               >
                                 <Archive size={17} />
@@ -391,7 +405,7 @@ export default function Products({ data, inventory = false, reload, notify }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ResponsiveTable>
           </div>
         )}
       </section>
@@ -486,7 +500,7 @@ export default function Products({ data, inventory = false, reload, notify }) {
           onClose={() => setHistory(null)}
         >
           <div className="table-wrap">
-            <table>
+            <ResponsiveTable>
               <thead>
                 <tr>
                   <th>Date</th>
@@ -512,7 +526,7 @@ export default function Products({ data, inventory = false, reload, notify }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ResponsiveTable>
           </div>
           <p className="hint">Showing the latest 500 movements.</p>
         </Modal>

@@ -1,14 +1,7 @@
 import mongoose from "mongoose";
 import Decimal from "decimal.js";
 import { createHash } from "node:crypto";
-import {
-  Product,
-  Customer,
-  Invoice,
-  InventoryTransaction,
-  ShopSettings,
-  Counter,
-} from "./models.js";
+
 import { calculate } from "../../shared/billing.js";
 import { fail } from "./validations.js";
 export async function atomic(work) {
@@ -22,7 +15,9 @@ export async function changeStock(
   user,
   session,
   referenceId = "",
+  models,
 ) {
+  const { Product, InventoryTransaction } = models;
   if (next < 0) throw fail("Insufficient stock", 409);
   if (
     !["kg", "gram", "litre", "ml"].includes(product.unit) &&
@@ -54,7 +49,8 @@ export async function changeStock(
     { session },
   );
 }
-export async function checkout(input, user) {
+export async function checkout(input, user, models) {
+  const { Product, Invoice, Customer, ShopSettings, Counter } = models;
   const requestHash = createHash("sha256")
     .update(JSON.stringify(input))
     .digest("hex");
@@ -147,6 +143,7 @@ export async function checkout(input, user) {
           user,
           session,
           invoice.id,
+          models,
         );
       }
       return invoice;
@@ -161,7 +158,8 @@ export async function checkout(input, user) {
     throw e;
   }
 }
-export async function cancel(id, reason, user) {
+export async function cancel(id, reason, user, models) {
+  const { Product, Invoice } = models;
   return atomic(async (session) => {
     const invoice = await Invoice.findById(id).session(session);
     if (!invoice) throw fail("Invoice not found", 404);
@@ -182,6 +180,7 @@ export async function cancel(id, reason, user) {
         user,
         session,
         invoice.id,
+        models,
       );
     }
     return invoice;

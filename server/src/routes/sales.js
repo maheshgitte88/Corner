@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import * as M from "../models.js";
+
 import * as V from "../validations.js";
 const router = Router();
 router.param("id", (req, res, next, value) => {
@@ -32,13 +32,17 @@ router.get("/invoices", async (req, res) => {
     filter.paymentMethod = z
       .enum(["Cash", "UPI", "Card", "Bank Transfer", "Other"])
       .parse(req.query.paymentMethod);
-  res.json(await M.Invoice.find(filter).sort({ createdAt: -1 }).lean());
+  res.json(
+    await req.models.Invoice.find(filter).sort({ createdAt: -1 }).lean(),
+  );
 });
 router.post("/invoices", async (req, res) =>
-  res.status(201).json(await checkout(V.sale.parse(req.body), req.user.id)),
+  res
+    .status(201)
+    .json(await checkout(V.sale.parse(req.body), req.user.id, req.models)),
 );
 router.get("/invoices/:id", async (req, res) => {
-  const i = await M.Invoice.findById(req.params.id);
+  const i = await req.models.Invoice.findById(req.params.id);
   if (!i) throw V.fail("Invoice not found", 404);
   res.json(i);
 });
@@ -48,15 +52,16 @@ router.post("/invoices/:id/cancel", async (req, res) =>
       req.params.id,
       z.string().trim().min(3).max(500).parse(req.body.reason),
       req.user.id,
+      req.models,
     ),
   ),
 );
 router.get("/settings", async (req, res) =>
-  res.json((await M.ShopSettings.findOne()) || {}),
+  res.json((await req.models.ShopSettings.findOne()) || {}),
 );
 router.put("/settings", async (req, res) =>
   res.json(
-    await M.ShopSettings.findOneAndUpdate(
+    await req.models.ShopSettings.findOneAndUpdate(
       { singleton: "shop" },
       { $set: V.settings.parse(req.body) },
       { upsert: true, new: true },
@@ -70,9 +75,12 @@ router.get("/dashboard", async (req, res) => {
   const start = new Date(today + "T00:00:00+05:30");
   const month = new Date(today.slice(0, 7) + "-01T00:00:00+05:30");
   const [products, sales, recent] = await Promise.all([
-    M.Product.find({ isActive: true }).lean(),
-    M.Invoice.find({ status: "Completed", createdAt: { $gte: month } }).lean(),
-    M.Invoice.find().sort({ createdAt: -1 }).limit(6).lean(),
+    req.models.Product.find({ isActive: true }).lean(),
+    req.models.Invoice.find({
+      status: "Completed",
+      createdAt: { $gte: month },
+    }).lean(),
+    req.models.Invoice.find().sort({ createdAt: -1 }).limit(6).lean(),
   ]);
   const todaySales = sales.filter((i) => i.createdAt >= start);
   res.json({
@@ -89,7 +97,7 @@ router.get("/dashboard", async (req, res) => {
   });
 });
 router.get("/reports/sales", async (req, res) => {
-  const invoices = await M.Invoice.find({
+  const invoices = await req.models.Invoice.find({
     ...dates(req.query),
     status: "Completed",
   }).lean();

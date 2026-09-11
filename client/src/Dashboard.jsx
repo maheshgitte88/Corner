@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "./components";
 import React, { useState } from "react";
 import {
   Plus,
@@ -84,7 +85,7 @@ export default function Dashboard({ data, go, openInvoice }) {
             />
           ) : (
             <div className="table-wrap">
-              <table>
+              <ResponsiveTable>
                 <thead>
                   <tr>
                     <th>Invoice / customer</th>
@@ -118,7 +119,7 @@ export default function Dashboard({ data, go, openInvoice }) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
           )}
         </section>

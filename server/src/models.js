@@ -12,6 +12,7 @@ export const Product = model("Product", {
   description: String,
   imageUrl: String,
   imageKey: String,
+  imageProvider: { type: String, enum: ["", "cloudinary", "s3"], default: "" },
   purchasePrice: { type: Number, default: 0 },
   sellingPrice: { type: Number, required: true, min: 1 },
   taxPercent: { type: Number, default: 0 },
@@ -86,7 +87,16 @@ export const ShopSettings = model("ShopSettings", {
 export const User = model("User", {
   email: { type: String, unique: true },
   passwordHash: String,
-  role: { type: String, default: "admin" },
+  role: {
+    type: String,
+    enum: ["platform_admin", "client_admin", "cashier"],
+    default: "client_admin",
+  },
+  tenantId: ref("Tenant"),
+  name: String,
+  isActive: { type: Boolean, default: true },
+  mustChangePassword: { type: Boolean, default: false },
+  tokenVersion: { type: Number, default: 0 },
 });
 export const Counter = model("Counter", {
   key: { type: String, unique: true },

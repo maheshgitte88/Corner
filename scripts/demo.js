@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import dotenv from "dotenv";
 const root = fileURLToPath(new URL("../", import.meta.url));
+const demoPort = process.env.DEMO_PORT || "4100";
 const demoDir = path.join(root, ".local-demo");
 fs.mkdirSync(demoDir, { recursive: true });
 const envFile = path.join(demoDir, ".env");
@@ -16,7 +17,14 @@ if (!fs.existsSync(envFile)) {
     { mode: 0o600 },
   );
 }
-const credentials = dotenv.parse(fs.readFileSync(envFile));
+let credentials = dotenv.parse(fs.readFileSync(envFile));
+if (!credentials.PLATFORM_ADMIN_EMAIL) {
+  fs.appendFileSync(
+    envFile,
+    `PLATFORM_ADMIN_EMAIL=platform@counter.local\nPLATFORM_ADMIN_PASSWORD=${randomBytes(18).toString("base64url")}\n`,
+  );
+  credentials = dotenv.parse(fs.readFileSync(envFile));
+}
 process.env.MONGOMS_DOWNLOAD_DIR = path.join(root, ".mongodb-binaries");
 console.log(
   "Starting an isolated local demo. Its database is temporary and resets when stopped.",
@@ -31,9 +39,10 @@ try {
     ...process.env,
     ...credentials,
     MONGODB_URI: repl.getUri("counter-demo"),
-    PORT: "4100",
-    CLIENT_URL: "http://localhost:4100",
+    PORT: demoPort,
+    CLIENT_URL: `http://localhost:${demoPort}`,
     NODE_ENV: "development",
+    SEED_DEMO: "true",
   };
   const seed = spawn(process.execPath, ["server/src/seed.js"], {
     cwd: root,
@@ -54,7 +63,7 @@ try {
     windowsHide: true,
   });
   console.log(
-    `\nOpen http://localhost:4100\nEmail: ${credentials.ADMIN_EMAIL}\nPassword: ${credentials.ADMIN_PASSWORD}\n\nThese generated local demo credentials are saved in .local-demo/.env.\nPress Ctrl+C to stop. Use your own MongoDB for permanent shop data.\n`,
+    `\nOpen http://localhost:${demoPort}\nPlatform admin: ${credentials.PLATFORM_ADMIN_EMAIL}\nPlatform password: ${credentials.PLATFORM_ADMIN_PASSWORD}\n\nClient email: ${credentials.ADMIN_EMAIL}\nPassword: ${credentials.ADMIN_PASSWORD}\n\nThese generated local demo credentials are saved in .local-demo/.env.\nPress Ctrl+C to stop. Use your own MongoDB for permanent shop data.\n`,
   );
   const stop = () => server.kill();
   process.once("SIGINT", stop);

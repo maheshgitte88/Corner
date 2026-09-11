@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "./components";
 import React, { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, ArrowUpRight } from "lucide-react";
 import { api, money, date } from "./api";
@@ -58,7 +59,7 @@ export function Directory({ data, type, reload, notify, openInvoice }) {
           />
         ) : (
           <div className="table-wrap">
-            <table>
+            <ResponsiveTable>
               <thead>
                 <tr>
                   <th>Name</th>
@@ -125,7 +126,7 @@ export function Directory({ data, type, reload, notify, openInvoice }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ResponsiveTable>
           </div>
         )}
       </section>
@@ -395,7 +396,7 @@ export function Reports({ data }) {
               </div>
               {report.products.length ? (
                 <div className="table-wrap">
-                  <table>
+                  <ResponsiveTable>
                     <thead>
                       <tr>
                         <th>Product</th>
@@ -415,7 +416,7 @@ export function Reports({ data }) {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </ResponsiveTable>
                 </div>
               ) : (
                 <Empty title="Sales insights start with a sale" />
@@ -453,7 +454,7 @@ export function Reports({ data }) {
                   <h2>{title}</h2>
                 </div>
                 <div className="table-wrap">
-                  <table>
+                  <ResponsiveTable>
                     <thead>
                       <tr>
                         <th>Period</th>
@@ -470,7 +471,7 @@ export function Reports({ data }) {
                           </tr>
                         ))}
                     </tbody>
-                  </table>
+                  </ResponsiveTable>
                 </div>
               </section>
             ))}
@@ -480,7 +481,7 @@ export function Reports({ data }) {
               <h2>Low & out-of-stock products</h2>
             </div>
             <div className="table-wrap">
-              <table>
+              <ResponsiveTable>
                 <thead>
                   <tr>
                     <th>Product</th>
@@ -505,7 +506,7 @@ export function Reports({ data }) {
                       </tr>
                     ))}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
           </section>
         </>

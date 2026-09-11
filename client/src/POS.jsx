@@ -1,5 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
+  X,
   Plus,
   Minus,
   Trash2,
@@ -8,6 +9,7 @@ import {
   UserRound,
   ScanBarcode,
 } from "lucide-react";
+import { useMobile, useMobileDialog } from "./mobile";
 import { api, money, toCents } from "./api";
 import { calculate } from "../../shared/billing";
 import {
@@ -16,21 +18,58 @@ import {
   ProductImage,
   Field,
   Empty,
+  Modal,
 } from "./components";
-export default function POS({ data, reload, openInvoice, notify }) {
+export default function POS({
+  data,
+  reload,
+  openInvoice,
+  notify,
+  draft,
+  setDraft,
+  attempt,
+}) {
   const [query, setQuery] = useState(""),
     [category, setCategory] = useState(""),
-    [cart, setCart] = useState([]),
-    [customerId, setCustomerId] = useState(""),
-    [name, setName] = useState(""),
-    [phone, setPhone] = useState(""),
-    [discount, setDiscount] = useState(""),
-    [discountType, setDiscountType] = useState("flat"),
-    [paid, setPaid] = useState(""),
-    [method, setMethod] = useState("Cash"),
+    [cart, setCart] = useState(draft.cart ?? []),
+    [customerId, setCustomerId] = useState(draft.customerId ?? ""),
+    [name, setName] = useState(draft.name ?? ""),
+    [phone, setPhone] = useState(draft.phone ?? ""),
+    [discount, setDiscount] = useState(draft.discount ?? ""),
+    [discountType, setDiscountType] = useState(draft.discountType ?? "flat"),
+    [paid, setPaid] = useState(draft.paid ?? ""),
+    [method, setMethod] = useState(draft.method ?? "Cash"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const attempt = useRef(null);
+  const [quantityProduct, setQuantityProduct] = useState(null);
+  const [quantityValue, setQuantityValue] = useState("");
+  const mobile = useMobile();
+  const [cartOpen, setCartOpen] = useState(false);
+  const cartRef = useRef(null);
+  useMobileDialog(mobile && cartOpen, cartRef, () => setCartOpen(false));
+  useEffect(() => {
+    setDraft({
+      cart,
+      customerId,
+      name,
+      phone,
+      discount,
+      discountType,
+      paid,
+      method,
+    });
+  }, [
+    cart,
+    customerId,
+    name,
+    phone,
+    discount,
+    discountType,
+    paid,
+    method,
+    setDraft,
+  ]);
+
   const products = data.products.filter(
     (p) =>
       p.isActive &&
@@ -41,6 +80,10 @@ export default function POS({ data, reload, openInvoice, notify }) {
   );
   const update = (p, q) => {
     setError("");
+    if (!Number.isFinite(q) || q < 0) {
+      setError("Enter a valid quantity of zero or more.");
+      return;
+    }
     if (q > p.stockQuantity) {
       setError(`Only ${p.stockQuantity} ${p.unit} of ${p.name} available`);
       return;
@@ -107,6 +150,7 @@ export default function POS({ data, reload, openInvoice, notify }) {
       setPhone("");
       setCustomerId("");
       attempt.current = null;
+      setCartOpen(false);
       openInvoice(invoice);
       notify("Sale completed. Your invoice is ready.");
       await reload();
@@ -118,6 +162,69 @@ export default function POS({ data, reload, openInvoice, notify }) {
   };
   return (
     <>
+      {quantityProduct && (
+        <Modal
+          title={`Quantity · ${quantityProduct.name}`}
+          onClose={() => setQuantityProduct(null)}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const value = Number(quantityValue);
+              if (
+                quantityValue.trim() === "" ||
+                !Number.isFinite(value) ||
+                value < 0 ||
+                value > quantityProduct.stockQuantity
+              )
+                return;
+              update(quantityProduct, value);
+              setQuantityProduct(null);
+            }}
+          >
+            <p>
+              Set the total quantity in this bill.{" "}
+              {quantityProduct.stockQuantity} {quantityProduct.unit} available.
+            </p>
+            <Field label={`Quantity (${quantityProduct.unit})`}>
+              <input
+                autoFocus
+                type="number"
+                inputMode="decimal"
+                min="0"
+                max={quantityProduct.stockQuantity}
+                step={
+                  ["kg", "gram", "litre", "ml"].includes(quantityProduct.unit)
+                    ? "0.001"
+                    : "1"
+                }
+                required
+                value={quantityValue}
+                onChange={(event) => setQuantityValue(event.target.value)}
+              />
+            </Field>
+            <div className="quantity-presets" aria-label="Quick quantities">
+              {[5, 10, 20, 50].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className="button secondary"
+                  disabled={value > quantityProduct.stockQuantity}
+                  onClick={() => setQuantityValue(String(value))}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+            <p className="hint">
+              Enter 0 to remove this product from the bill.
+            </p>
+            <button className="button quantity-save" type="submit">
+              Update bill
+            </button>
+          </form>
+        </Modal>
+      )}
       <PageHeading
         eyebrow="AT THE COUNTER"
         title="Let’s make a sale."
@@ -153,35 +260,82 @@ export default function POS({ data, reload, openInvoice, notify }) {
               ))}
           </div>
           <div className="product-grid">
-            {products.map((p) => (
-              <button
-                className="pos-product"
-                key={p._id}
-                disabled={!p.stockQuantity}
-                onClick={() =>
-                  update(
-                    p,
-                    (cart.find((l) => l.productId === p._id)?.quantity || 0) +
-                      Math.min(1, p.stockQuantity),
-                  )
-                }
-              >
-                <ProductImage product={p} />
-                <span className="pos-category">
-                  {p.category?.name || "Everyday essentials"}
-                </span>
-                <b>{p.name}</b>
-                <small>
-                  {p.sku} · {p.stockQuantity} {p.unit} available
-                </small>
-                <div>
-                  <strong>{money(p.sellingPrice)}</strong>
-                  <span className="add-circle">
-                    <Plus size={18} />
-                  </span>
-                </div>
-              </button>
-            ))}
+            {products.map((p) => {
+              const quantity =
+                cart.find((line) => line.productId === p._id)?.quantity || 0;
+              return (
+                <article
+                  key={p._id}
+                  className={"pos-product-card" + (quantity ? " in-bill" : "")}
+                >
+                  <button
+                    className="pos-product"
+                    aria-label={`Add one ${p.name} to bill`}
+                    disabled={!p.stockQuantity}
+                    onClick={() =>
+                      update(
+                        p,
+                        (cart.find((l) => l.productId === p._id)?.quantity ||
+                          0) + Math.min(1, p.stockQuantity),
+                      )
+                    }
+                  >
+                    <ProductImage product={p} />
+                    <span className="pos-category">
+                      {p.category?.name || "Everyday essentials"}
+                    </span>
+                    <b>{p.name}</b>
+                    <small>
+                      {p.sku} · {p.stockQuantity} {p.unit} available
+                    </small>
+                    <div>
+                      <strong>{money(p.sellingPrice)}</strong>
+                    </div>
+                  </button>
+                  <div
+                    className="product-card-stepper"
+                    role="group"
+                    aria-label={`Quantity for ${p.name}`}
+                  >
+                    <button
+                      className="product-step-button"
+                      aria-label={`Decrease ${p.name} on card`}
+                      disabled={!quantity}
+                      onClick={() => update(p, Math.max(0, quantity - 1))}
+                    >
+                      <Minus size={18} />
+                    </button>
+                    <button
+                      className={
+                        "product-quantity-button" +
+                        (quantity ? " has-quantity" : "")
+                      }
+                      title={`${quantity} ${p.unit} in bill`}
+                      aria-label={`Set quantity for ${p.name}, ${quantity} ${p.unit} in bill`}
+                      disabled={!p.stockQuantity && !quantity}
+                      onClick={() => {
+                        setQuantityProduct(p);
+                        setQuantityValue(
+                          String(quantity || Math.min(1, p.stockQuantity)),
+                        );
+                      }}
+                    >
+                      {quantity}
+                    </button>
+                    <button
+                      className="product-step-button"
+                      aria-label={`Increase ${p.name} on card`}
+                      disabled={quantity >= p.stockQuantity}
+                      onClick={() =>
+                        update(p, Math.min(p.stockQuantity, quantity + 1))
+                      }
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
           {!products.length && (
             <Empty
@@ -190,7 +344,16 @@ export default function POS({ data, reload, openInvoice, notify }) {
             />
           )}
         </section>
-        <section className="cart panel">
+        {mobile && cartOpen && (
+          <div className="cart-scrim" onClick={() => setCartOpen(false)} />
+        )}
+        <section
+          ref={cartRef}
+          className={"cart panel" + (cartOpen ? " is-open" : "")}
+          role={mobile && cartOpen ? "dialog" : undefined}
+          aria-modal={mobile && cartOpen ? true : undefined}
+          aria-label="Current bill"
+        >
           <div className="panel-heading">
             <div>
               <h2>
@@ -198,7 +361,14 @@ export default function POS({ data, reload, openInvoice, notify }) {
               </h2>
               <p>A fresh sale, a happy customer</p>
             </div>
-            <ShoppingCart size={21} />
+            <ShoppingCart className="desktop-cart-icon" size={21} />
+            <button
+              className="icon-button cart-close"
+              aria-label="Back to products"
+              onClick={() => setCartOpen(false)}
+            >
+              <X size={22} />
+            </button>
           </div>
           <div className="cart-items">
             {!cart.length ? (
@@ -306,6 +476,7 @@ export default function POS({ data, reload, openInvoice, notify }) {
                   onChange={(e) => setName(e.target.value)}
                 />
                 <input
+                  type="tel"
                   aria-label="Customer mobile"
                   placeholder="Mobile number"
                   value={phone}
@@ -406,6 +577,29 @@ export default function POS({ data, reload, openInvoice, notify }) {
           </div>
         </section>
       </fieldset>
+      {!cartOpen && error && (
+        <p className="mobile-pos-error error" role="alert">
+          {error}
+        </p>
+      )}
+      <button
+        className="mobile-bill-bar"
+        onClick={() => setCartOpen(true)}
+        aria-haspopup="dialog"
+        aria-expanded={cartOpen}
+      >
+        <ShoppingCart size={22} />
+        <span>
+          <b>View bill · {cart.length}</b>
+          <small>
+            {cart.length
+              ? "Review & collect payment"
+              : "Add products to start a sale"}
+          </small>
+        </span>
+        <strong>{money(totals?.grandTotal || 0)}</strong>
+        <ArrowRight size={19} />
+      </button>
     </>
   );
 }

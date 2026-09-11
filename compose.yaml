@@ -1,0 +1,18 @@
+# Connect this container to your own Atlas / MongoDB replica set.
+# Terminate HTTPS at your reverse proxy; set CLIENT_URL to that public HTTPS origin.
+services:
+  counter:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4100:4100"
+    env_file:
+      - server/.env
+    environment:
+      NODE_ENV: production
+      PORT: 4100
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4100/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

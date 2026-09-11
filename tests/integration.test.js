@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 import bcrypt from "bcryptjs";
 import request from "supertest";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
-process.env.MONGOMS_DOWNLOAD_DIR ||= fileURLToPath(new URL("../.mongodb-binaries", import.meta.url));
+process.env.MONGOMS_DOWNLOAD_DIR ||= fileURLToPath(
+  new URL("../.mongodb-binaries", import.meta.url),
+);
 let repl, app, M, admin;
 const email = "test@example.com",
   password = randomBytes(20).toString("hex");
@@ -22,11 +24,43 @@ before(
     process.env.MONGODB_URI = repl.getUri("counter-test");
     const { connect } = await import("../server/src/config.js");
     await connect();
-    M = await import("../server/src/models.js");
-    await Promise.all(Object.values(M).map((m) => m.init()));
-    await M.User.create({
+    const legacy = await import("../server/src/models.js");
+    const platform = await import("../server/src/platform-models.js");
+    await Promise.all(
+      [...Object.values(legacy), ...Object.values(platform)].map((m) =>
+        m.init(),
+      ),
+    );
+    const plan = await platform.Package.create({
+      name: "Test",
+      monthlyPrice: 100,
+      yearlyPrice: 1000,
+      maxProducts: 1000,
+      maxUsers: 5,
+      reportsEnabled: true,
+      imagesEnabled: true,
+    });
+    const tenant = await platform.Tenant.create({
+      name: "Test shop",
+      slug: "test-shop",
+      ownerEmail: email,
+      subscription: {
+        planId: plan.id,
+        planSnapshot: plan.toObject(),
+        cycle: "monthly",
+        state: "active",
+        startsAt: new Date(),
+        endsAt: new Date(Date.now() + 86400000),
+      },
+    });
+    M = await (
+      await import("../server/src/tenant-db.js")
+    ).readyTenant(tenant.id);
+    await legacy.User.create({
       email,
       passwordHash: await bcrypt.hash(password, 4),
+      tenantId: tenant.id,
+      role: "client_admin",
     });
     await M.ShopSettings.create({
       shopName: "Test Shop",
@@ -273,4 +307,3 @@ test("simultaneous cancellations restore stock once", async () => {
     1,
   );
 });
-

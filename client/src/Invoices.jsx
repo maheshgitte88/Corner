@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "./components";
 import React, { useState } from "react";
 import { Printer, ArrowUpRight, Download } from "lucide-react";
 import { api, money, date } from "./api";
@@ -10,7 +11,7 @@ import {
   Badge,
   Empty,
 } from "./components";
-export function InvoiceView({ invoice, onClose, onCancel }) {
+export function InvoiceView({ invoice, onClose, onCancel, canCancel = true }) {
   const [format, setFormat] = useState(
       invoice.shopSnapshot?.printFormat || "A4",
     ),
@@ -55,7 +56,7 @@ export function InvoiceView({ invoice, onClose, onCancel }) {
         >
           <Printer size={16} /> Print / save PDF
         </button>
-        {invoice.status === "Completed" && (
+        {invoice.status === "Completed" && canCancel && (
           <button
             className="text-button danger"
             onClick={() => setCancel(!cancel)}
@@ -310,7 +311,7 @@ export default function Invoices({ data, openInvoice }) {
           />
         ) : (
           <div className="table-wrap">
-            <table>
+            <ResponsiveTable>
               <thead>
                 <tr>
                   <th>Invoice</th>
@@ -349,7 +350,7 @@ export default function Invoices({ data, openInvoice }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ResponsiveTable>
           </div>
         )}
       </section>

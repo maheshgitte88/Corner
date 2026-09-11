@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import {
   LayoutDashboard,
@@ -12,10 +12,13 @@ import {
   Tags,
   LogOut,
   Menu,
-  Plus,
+  X,
   Store,
-  ArrowUpRight,
   CheckCircle2,
+  Building2,
+  CreditCard,
+  ShieldCheck,
+  KeyRound,
 } from "lucide-react";
 import { api } from "./api";
 import { Field, Form, Loading } from "./components";
@@ -24,8 +27,12 @@ import Products from "./Products";
 import POS from "./POS";
 import Invoices, { InvoiceView } from "./Invoices";
 import { Directory, Settings, Reports } from "./Management";
+import Platform from "./Platform";
+import Account, { PasswordForm } from "./Account";
 import "./styles.css";
-const navigation = [
+import "./mobile.css";
+import { useMobile, useMobileDialog } from "./mobile";
+const shopNavigation = [
   ["Dashboard", LayoutDashboard],
   ["POS", ShoppingBag],
   ["Products", Package],
@@ -35,29 +42,63 @@ const navigation = [
   ["Invoices", Receipt],
   ["Reports", ChartNoAxesCombined],
   ["Settings", SettingsIcon],
+  ["Team", Users],
+  ["Subscription", CreditCard],
+  ["Account", KeyRound],
+];
+const platformNavigation = [
+  ["Overview", LayoutDashboard],
+  ["Clients", Building2],
+  ["Packages", Package],
+  ["Payments", CreditCard],
+  ["Audit log", ShieldCheck],
+  ["Account", KeyRound],
 ];
 function App() {
   const [user, setUser] = useState(null),
     [checking, setChecking] = useState(true),
     [page, setPage] = useState("Dashboard"),
     [data, setData] = useState(null),
+    [subscription, setSubscription] = useState(null),
     [error, setError] = useState(""),
     [toast, setToast] = useState(""),
     [invoice, setInvoice] = useState(null),
     [drawer, setDrawer] = useState(false);
+  const mobile = useMobile();
+  const drawerRef = useRef(null);
+  const [draft, setDraft] = useState({});
+  useMobileDialog(mobile && drawer, drawerRef, () => setDrawer(false));
+  const billingAttempt = useRef(null);
+  const generation = useRef(0);
+  const clear = () => {
+    generation.current++;
+    setUser(null);
+    setDraft({});
+    billingAttempt.current = null;
+    setDrawer(false);
+    setData(null);
+    setSubscription(null);
+    setInvoice(null);
+    setError("");
+  };
+  const establish = async () => {
+    const ticket = ++generation.current;
+    const u = await api("/auth/me");
+    if (ticket !== generation.current) return;
+    setData(null);
+    setSubscription(null);
+    setUser(u);
+    setPage(u.role === "platform_admin" ? "Overview" : "Dashboard");
+  };
   useEffect(() => {
-    api("/auth/me")
-      .then(setUser)
+    establish()
       .catch(() => {})
       .finally(() => setChecking(false));
-    const expire = () => {
-      setUser(null);
-      setData(null);
-    };
-    window.addEventListener("session-expired", expire);
-    return () => window.removeEventListener("session-expired", expire);
+    window.addEventListener("session-expired", clear);
+    return () => window.removeEventListener("session-expired", clear);
   }, []);
   const reload = useCallback(async () => {
+    const ticket = generation.current;
     const keys = [
       "products",
       "categories",
@@ -66,20 +107,42 @@ function App() {
       "settings",
       "dashboard",
     ];
-    const values = await Promise.all(keys.map((k) => api("/" + k)));
+    const [values, sub] = await Promise.all([
+      Promise.all(keys.map((k) => api("/" + k))),
+      api("/subscription"),
+    ]);
+    if (ticket !== generation.current) return;
     setData(Object.fromEntries(keys.map((k, i) => [k, values[i]])));
+    setSubscription(sub);
     setError("");
   }, []);
   useEffect(() => {
-    if (user) reload().catch((e) => setError(e.message));
+    if (user && user.role !== "platform_admin" && !user.mustChangePassword)
+      reload().catch((e) => setError(e.message));
   }, [user, reload]);
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => setToast(""), 4000);
+      const timer = setTimeout(() => setToast(""), 4500);
       return () => clearTimeout(timer);
     }
   }, [toast]);
+  const logout = async () => {
+    try {
+      await api("/auth/logout", { method: "POST" });
+      clear();
+    } catch (e) {
+      setToast(e.message);
+    }
+  };
   const go = (p) => {
+    if (
+      user?.role === "cashier" &&
+      !["Dashboard", "POS", "Invoices", "Subscription", "Account"].includes(p)
+    ) {
+      setToast("This section is available to shop administrators.");
+      return;
+    }
+    window.scrollTo({ top: 0 });
     setPage(p);
     setDrawer(false);
   };
@@ -94,15 +157,18 @@ function App() {
             </span>
             counter<span className="brand-dot">.</span>
           </div>
-          <span className="eyebrow">A GOOD DAY STARTS AT THE COUNTER</span>
+          <span className="eyebrow">
+            ONE PLATFORM. EVERY RETAIL POSSIBILITY.
+          </span>
           <h1>
-            Small shop.
+            More shops.
             <br />
-            Big possibilities.
+            Same simplicity.
           </h1>
           <p>
-            From the first restock to the last receipt.
-            <br />A simpler way to run your everyday.
+            A workspace for every business.
+            <br />
+            From the first restock to the next milestone.
           </p>
           <div className="login-art">
             <div>
@@ -114,34 +180,33 @@ function App() {
               <span>Every sale, sorted.</span>
             </div>
             <div>
-              <ChartNoAxesCombined size={34} />
-              <span>Room to grow.</span>
+              <Building2 size={34} />
+              <span>Built to grow.</span>
             </div>
           </div>
-          <small>INVENTORY & POS · BUILT FOR YOUR EVERYDAY</small>
+          <small>COUNTER CLOUD · RETAIL, TOGETHER</small>
         </section>
         <section className="login-form">
           <div>
-            <span className="eyebrow">WELCOME BACK</span>
-            <h2>Open for business.</h2>
-            <p>Sign in to your retail workspace.</p>
+            <span className="eyebrow">WELCOME TO COUNTER</span>
+            <h2>Your workspace awaits.</h2>
+            <p>Sign in to your shop or platform admin account.</p>
             <Form
               label="Sign in to Counter →"
-              onSubmit={async (fd) =>
-                setUser(
-                  await api("/auth/login", {
-                    method: "POST",
-                    body: Object.fromEntries(fd),
-                  }),
-                )
-              }
+              onSubmit={async (fd) => {
+                await api("/auth/login", {
+                  method: "POST",
+                  body: Object.fromEntries(fd),
+                });
+                await establish();
+              }}
             >
               <Field
                 label="Email address"
                 name="email"
                 type="email"
                 autoComplete="username"
-                placeholder="owner@yourshop.com"
+                placeholder="you@yourbusiness.com"
                 required
               />
               <Field
@@ -149,31 +214,95 @@ function App() {
                 name="password"
                 type="password"
                 autoComplete="current-password"
-                placeholder="Enter your password"
                 required
               />
             </Form>
             <p className="hint">
-              First time here? Configure your shop and run the seed command in
-              the setup guide to create your admin account.
+              New to Counter? Your platform administrator will create your
+              workspace and share your initial login. For password help, contact
+              your administrator.
             </p>
           </div>
         </section>
       </main>
     );
+  if (user.mustChangePassword)
+    return (
+      <main className="password-onboarding">
+        <div className="brand">
+          <span className="brand-mark">
+            <Store />
+          </span>
+          counter.
+        </div>
+        <PasswordForm forced done={logout} />
+        <button className="text-button" onClick={logout}>
+          Sign out
+        </button>
+      </main>
+    );
+  const isPlatform = user.role === "platform_admin",
+    isCashier = user.role === "cashier",
+    plan = subscription?.tenant.subscription.planSnapshot;
+  const navigation = isPlatform
+    ? platformNavigation
+    : shopNavigation.filter(
+        ([p]) =>
+          !(
+            isCashier &&
+            [
+              "Products",
+              "Inventory",
+              "Categories",
+              "Customers",
+              "Reports",
+              "Settings",
+              "Team",
+            ].includes(p)
+          ) && !(p === "Reports" && plan && !plan.reportsEnabled),
+      );
+  const mobileNavigation = isPlatform
+    ? [
+        ["Overview", LayoutDashboard, "Home"],
+        ["Clients", Building2, "Clients"],
+        ["Packages", Package, "Packages"],
+        ["Payments", CreditCard, "Payments"],
+      ]
+    : [
+        ["Dashboard", LayoutDashboard, "Home"],
+        ...(!isCashier ? [["Products", Package, "Products"]] : []),
+        ["POS", ShoppingBag, "New bill"],
+        ["Invoices", Receipt, "Sales"],
+      ];
+  const readonly =
+    subscription && ["expired", "suspended"].includes(subscription.access);
   const props = { data, reload, notify: setToast, go, openInvoice: setInvoice };
   return (
     <div className="app-shell">
       {drawer && (
         <div className="drawer-scrim" onClick={() => setDrawer(false)} />
       )}
-      <aside className={`sidebar ${drawer ? "open" : ""}`}>
+      <aside
+        ref={drawerRef}
+        className={"sidebar " + (drawer ? "open" : "")}
+        role={mobile && drawer ? "dialog" : undefined}
+        aria-modal={mobile && drawer ? true : undefined}
+        aria-label="Workspace navigation"
+        inert={mobile && !drawer ? "" : undefined}
+      >
+        <button
+          className="icon-button drawer-close"
+          aria-label="Close navigation"
+          onClick={() => setDrawer(false)}
+        >
+          <X size={22} />
+        </button>
         <a
-          className="brand"
           href="#"
+          className="brand"
           onClick={(e) => {
             e.preventDefault();
-            go("Dashboard");
+            go(isPlatform ? "Overview" : "Dashboard");
           }}
         >
           <span className="brand-mark">
@@ -183,53 +312,66 @@ function App() {
         </a>
         <div className="shop-switch">
           <div className="shop-avatar">
-            {(data?.settings.shopName || "S").slice(0, 1)}
+            {isPlatform ? (
+              <ShieldCheck size={20} />
+            ) : (
+              (data?.settings.shopName || "S")[0]
+            )}
           </div>
           <div>
-            <b>{data?.settings.shopName || "Your store"}</b>
-            <small>Retail workspace</small>
+            <b>
+              {isPlatform
+                ? "Platform administration"
+                : data?.settings.shopName || user.tenant?.name || "Your store"}
+            </b>
+            <small>
+              {isPlatform
+                ? "All client workspaces"
+                : subscription?.tenant.slug || "Retail workspace"}
+            </small>
           </div>
           <span className="online-dot" />
         </div>
-        <span className="nav-label">WORKSPACE</span>
+        <span className="nav-label">
+          {isPlatform ? "PLATFORM" : "WORKSPACE"}
+        </span>
         <nav>
-          {navigation.map(([label, Icon], i) => (
-            <React.Fragment key={label}>
-              {i === 8 && <div className="nav-divider" />}
-              <button
-                className={page === label ? "active" : ""}
-                onClick={() => go(label)}
-              >
-                <Icon size={19} />
-                {label === "POS" ? "New bill / POS" : label}
-                {label === "POS" && <span className="nav-plus">+</span>}
-              </button>
-            </React.Fragment>
+          {navigation.map(([label, Icon]) => (
+            <button
+              key={label}
+              aria-current={page === label ? "page" : undefined}
+              className={page === label ? "active" : ""}
+              onClick={() => go(label)}
+            >
+              <Icon size={18} />
+              {label === "POS" ? "New bill / POS" : label}
+            </button>
           ))}
         </nav>
         <div className="sidebar-bottom">
           <div className="store-note">
-            <span className="online-dot" /> A little more organised.
+            {isPlatform
+              ? "Every client, supported."
+              : plan?.name || "Your package"}
             <br />
-            <span>A lot more possibilities.</span>
-          </div>
-          <button
-            className="profile"
-            onClick={async () => {
-              try {
-                await api("/auth/logout", { method: "POST" });
-                setUser(null);
-                setData(null);
-              } catch (e) {
-                setToast(e.message);
-              }
-            }}
-          >
-            <span className="avatar">
-              {user.email.slice(0, 1).toUpperCase()}
-            </span>
             <span>
-              <b>Shop admin</b>
+              {isPlatform
+                ? "A platform built to grow."
+                : subscription?.access === "trial"
+                  ? "Your workspace is on trial."
+                  : "A little more organised."}
+            </span>
+          </div>
+          <button className="profile" onClick={logout}>
+            <span className="avatar">{user.email[0].toUpperCase()}</span>
+            <span>
+              <b>
+                {isPlatform
+                  ? "Platform admin"
+                  : isCashier
+                    ? "Cashier"
+                    : "Shop admin"}
+              </b>
               <small>Sign out</small>
             </span>
             <LogOut size={17} />
@@ -247,21 +389,13 @@ function App() {
               <Menu size={21} />
             </button>
             <span className="breadcrumb">
-              Workspace <span>/</span>{" "}
-              <b>{page === "POS" ? "New bill" : page}</b>
+              {isPlatform ? "Platform" : "Workspace"} <span>/</span>{" "}
+              <b>{page}</b>
             </span>
           </div>
           <div className="header-right">
             <span className="today">
-              {new Date().toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
-            </span>
-            <span className="header-divider" />
-            <span className="live-label">
-              <i className="online-dot" /> Store workspace
+              {new Date().toLocaleDateString("en-IN", { dateStyle: "medium" })}
             </span>
             <span className="avatar small-avatar">
               {user.email[0].toUpperCase()}
@@ -270,7 +404,7 @@ function App() {
         </header>
         <main className="workspace">
           {error && (
-            <div className="error" role="alert">
+            <div className="error">
               {error}{" "}
               <button
                 className="text-button"
@@ -280,12 +414,59 @@ function App() {
               </button>
             </div>
           )}
-          {!data ? (
+          {readonly && (
+            <div className="access-banner">
+              <b>Workspace {subscription.access} · read-only</b>
+              <span>
+                Your existing records are available. Contact your platform
+                administrator to restore billing and editing.
+              </span>
+              <button
+                className="text-button"
+                onClick={() => go("Subscription")}
+              >
+                View subscription
+              </button>
+            </div>
+          )}
+          {isPlatform ? (
+            page === "Account" ? (
+              <Account
+                page={page}
+                user={user}
+                notify={setToast}
+                logout={logout}
+              />
+            ) : (
+              <Platform page={page} notify={setToast} go={go} />
+            )
+          ) : !data ? (
             <Loading />
+          ) : ["Team", "Subscription", "Account"].includes(page) ? (
+            <Account
+              page={page}
+              subscription={subscription}
+              refresh={reload}
+              user={user}
+              notify={setToast}
+              logout={logout}
+            />
           ) : page === "Dashboard" ? (
             <Dashboard {...props} />
           ) : page === "POS" ? (
-            <POS {...props} />
+            readonly ? (
+              <div className="saas-callout">
+                Billing is paused. Renew or reactivate your workspace to create
+                a new sale.
+              </div>
+            ) : (
+              <POS
+                {...props}
+                draft={draft}
+                setDraft={setDraft}
+                attempt={billingAttempt}
+              />
+            )
           ) : page === "Products" || page === "Inventory" ? (
             <Products key={page} {...props} inventory={page === "Inventory"} />
           ) : page === "Invoices" ? (
@@ -293,16 +474,39 @@ function App() {
           ) : page === "Customers" || page === "Categories" ? (
             <Directory key={page} {...props} type={page} />
           ) : page === "Reports" ? (
-            <Reports {...props} />
+            plan?.reportsEnabled && !isCashier ? (
+              <Reports {...props} />
+            ) : (
+              <div className="saas-callout">
+                Reports are not available for this account and package.
+              </div>
+            )
           ) : (
             <Settings {...props} />
           )}
         </main>
         <footer className="workspace-footer">
-          COUNTER · THE EVERYDAY RETAIL WORKSPACE
-          <span>Less admin. More business.</span>
+          COUNTER CLOUD · A WORKSPACE FOR EVERY BUSINESS
+          <span>Less admin. More possibilities.</span>
         </footer>
       </div>
+      <nav className="mobile-nav" aria-label="Main navigation">
+        {mobileNavigation.map(([target, Icon, label]) => (
+          <button
+            key={target}
+            className={page === target ? "active" : ""}
+            aria-current={page === target ? "page" : undefined}
+            onClick={() => go(target)}
+          >
+            <Icon size={22} />
+            <span>{label}</span>
+          </button>
+        ))}
+        <button onClick={() => setDrawer(true)} aria-expanded={drawer}>
+          <Menu size={22} />
+          <span>More</span>
+        </button>
+      </nav>
       {toast && (
         <div className="toast" role="status">
           <CheckCircle2 size={18} />
@@ -313,12 +517,14 @@ function App() {
         <InvoiceView
           invoice={invoice}
           onClose={() => setInvoice(null)}
+          canCancel={!isCashier && !readonly}
           onCancel={async (id, reason) => {
-            const updated = await api("/invoices/" + id + "/cancel", {
-              method: "POST",
-              body: { reason },
-            });
-            setInvoice(updated);
+            setInvoice(
+              await api("/invoices/" + id + "/cancel", {
+                method: "POST",
+                body: { reason },
+              }),
+            );
             await reload();
             setToast("Invoice cancelled and stock restored");
           }}

@@ -28,6 +28,7 @@ export const product = z.object({
     .optional()
     .default(""),
   imageKey: optional,
+  imageProvider: z.enum(["", "cloudinary", "s3"]).optional().default(""),
   purchasePrice: cents.default(0),
   sellingPrice: cents.min(1),
   taxPercent: z.number().min(0).max(100).default(0),

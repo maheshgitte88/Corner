@@ -1,12 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import { useMobileDialog } from "./mobile";
 import { X, Package, Search, LoaderCircle } from "lucide-react";
 export function Modal({ title, children, onClose, wide = false }) {
+  const dialogRef = useRef(null);
+  useMobileDialog(true, dialogRef, onClose);
   return (
     <div
       className="modal-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <section
+        ref={dialogRef}
         className={`modal ${wide ? "wide" : ""}`}
         role="dialog"
         aria-modal="true"
@@ -68,7 +72,7 @@ export function ProductImage({ product }) {
 export function Badge({ children }) {
   return (
     <span
-      className={`badge ${["Low stock", "Cancelled"].includes(children) ? "amber" : children === "Out of stock" ? "red" : "green"}`}
+      className={`badge ${["Low stock", "Cancelled", "trial", "expired", "suspended", "Archived", "Inactive"].includes(children) ? "amber" : children === "Out of stock" ? "red" : "green"}`}
     >
       {children}
     </span>
@@ -150,5 +154,54 @@ export function PageHeading({ eyebrow, title, description, action }) {
       </div>
       {action}
     </div>
+  );
+}
+
+// Retain table semantics on desktop and provide explicit labels for phone cards.
+export function ResponsiveTable({ children }) {
+  const sections = React.Children.toArray(children);
+  const head = sections.find((section) => section.type === "thead");
+  const row = React.Children.toArray(head?.props.children)[0];
+  const labels = React.Children.toArray(row?.props.children).map(
+    (cell) => cell.props.children || "Actions",
+  );
+  return (
+    <table className="responsive-table" role="table">
+      {sections.map((section) =>
+        section.type !== "tbody"
+          ? section
+          : React.cloneElement(
+              section,
+              {},
+              React.Children.map(section.props.children, (row) =>
+                React.isValidElement(row)
+                  ? React.cloneElement(
+                      row,
+                      { role: "row" },
+                      React.Children.map(row.props.children, (cell, index) =>
+                        React.isValidElement(cell)
+                          ? React.cloneElement(
+                              cell,
+                              { role: "cell" },
+                              <>
+                                <span
+                                  className="mobile-cell-label"
+                                  aria-hidden="true"
+                                >
+                                  {labels[index]}
+                                </span>
+                                <div className="mobile-cell-value">
+                                  {cell.props.children}
+                                </div>
+                              </>,
+                            )
+                          : cell,
+                      ),
+                    )
+                  : row,
+              ),
+            ),
+      )}
+    </table>
   );
 }

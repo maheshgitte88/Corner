@@ -1837,3 +1837,239 @@ tr:last-child td {
     -webkit-print-color-adjust: exact;
   }
 }
+/* Platform and subscription workspaces */
+.sidebar nav {
+  overflow-y: auto;
+  flex-shrink: 1;
+}
+.sidebar-bottom {
+  flex-shrink: 0;
+}
+.sidebar nav button {
+  flex-shrink: 0;
+}
+.package-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+.package-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 27px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.package-card:nth-child(2) {
+  border-color: #95af7b;
+  box-shadow: 0 5px 20px #244f3d08;
+}
+.package-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #71945e;
+}
+.package-card h2 {
+  font-size: 22px;
+  margin-top: 10px;
+}
+.package-card > p {
+  font-size: 12px;
+  color: #88977c;
+}
+.package-price {
+  font-size: 32px;
+  letter-spacing: -1px;
+  font-family: var(--serif);
+  font-weight: 700;
+  margin-top: 10px;
+}
+.package-price small {
+  font-size: 11px;
+  color: #8b977e;
+  letter-spacing: 0;
+  font-weight: 400;
+  margin-left: 6px;
+}
+.package-card ul {
+  padding: 18px 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+  display: grid;
+  gap: 15px;
+}
+.package-card li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #657e55;
+}
+.package-card .button {
+  margin-top: auto;
+}
+.saas-callout {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 25px;
+  border: 1px solid #dce5cf;
+  border-radius: 10px;
+  background: #eff4e7;
+  color: #577245;
+  font-size: 13px;
+}
+.saas-callout p {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #829473;
+}
+.renewal-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 23px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  font-size: 12px;
+}
+.renewal-row small {
+  display: block;
+  margin-top: 7px;
+  color: #93a080;
+}
+.plan-preview {
+  background: #f1f5ea;
+  border: 1px solid #dfe8d3;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 13px;
+}
+.plan-preview span,
+.plan-preview p {
+  font-size: 11px;
+  color: #859575;
+}
+.client-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 11px;
+  color: #80916e;
+  flex-wrap: wrap;
+}
+.audit-details {
+  white-space: normal;
+  max-width: 420px;
+  line-height: 1.6;
+}
+.subscription-panel {
+  margin-bottom: 25px;
+}
+.subscription-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 10px 25px 28px;
+  gap: 20px;
+}
+.subscription-stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+}
+.subscription-stats span {
+  color: #87987a;
+  font-size: 11px;
+}
+.subscription-note {
+  padding: 20px 25px;
+  background: #f6f8f0;
+  color: #8c9a7d;
+  font-size: 12px;
+  border-top: 1px solid var(--line);
+}
+.subscription-summary {
+  display: grid;
+  gap: 13px;
+  padding: 15px 0;
+}
+.subscription-summary strong {
+  font-size: 28px;
+}
+.access-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  background: #fff5df;
+  border: 1px solid #ecd8a8;
+  border-radius: 8px;
+  padding: 19px;
+  color: #90742c;
+  margin-bottom: 23px;
+  font-size: 12px;
+}
+.access-banner .text-button {
+  align-self: start;
+  color: #8e6e2b;
+}
+.password-onboarding {
+  max-width: 580px;
+  margin: 10vh auto;
+  padding: 25px;
+}
+.password-onboarding > .brand {
+  margin-bottom: 30px;
+}
+.password-onboarding > .text-button {
+  margin-top: 20px;
+}
+@media (max-width: 1100px) {
+  .package-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .package-grid {
+    grid-template-columns: 1fr;
+  }
+  .subscription-stats {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+  .plan-preview {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .saas-callout {
+    align-items: flex-start;
+  }
+  .sidebar nav button {
+    padding-block: 9px;
+    min-height: 37px;
+  }
+  .sidebar .shop-switch {
+    margin: 20px 0;
+  }
+  .sidebar-bottom .store-note {
+    display: none;
+  }
+}
+@media print {
+  .modal > footer.form-actions {
+    display: none !important;
+  }
+  .subscription-summary strong {
+    font-size: 25px;
+  }
+}

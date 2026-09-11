@@ -15,7 +15,9 @@
     "demo": "npm run build && node scripts/demo.js",
     "format": "prettier --write \"client/src/**/*.{jsx,js,css}\" \"server/src/**/*.js\" \"shared/*.js\" \"tests/*.js\" \"scripts/*.js\"",
     "test:unit": "node --test tests/billing.test.js",
-    "test:integration": "node --test tests/integration.test.js"
+    "test:integration": "node --test tests/integration.test.js",
+    "test:saas": "node --test tests/saas.test.js",
+    "migrate:legacy": "node scripts/migrate-legacy.js"
   },
   "devDependencies": {
     "concurrently": "^9.2.0",

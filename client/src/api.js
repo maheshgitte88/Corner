@@ -12,11 +12,9 @@ export async function api(path, options = {}) {
         : JSON.stringify(options.body)
       : undefined,
   });
-  const data = await response
-    .json()
-    .catch(() => ({
-      message: "Server is unavailable. Check that the backend is running.",
-    }));
+  const data = await response.json().catch(() => ({
+    message: "Server is unavailable. Check that the backend is running.",
+  }));
   if (!response.ok) {
     if (response.status === 401 && !path.startsWith("/auth"))
       window.dispatchEvent(new Event("session-expired"));

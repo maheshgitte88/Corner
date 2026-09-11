@@ -1,3 +1,4 @@
+import dns from "node:dns";
 import dotenv from "dotenv";
 import { fileURLToPath } from "node:url";
 import mongoose from "mongoose";
@@ -5,6 +6,12 @@ dotenv.config({
   path: fileURLToPath(new URL("../.env", import.meta.url)),
   quiet: true,
 });
+// Windows home-router DNS often refuses Node SRV/TXT lookups used by mongodb+srv.
+if (
+  process.platform === "win32" &&
+  process.env.MONGODB_URI?.startsWith("mongodb+srv://")
+)
+  dns.setServers(["8.8.8.8", "1.1.1.1"]);
 export const config = {
   port: Number(process.env.PORT || 4100),
   origin: process.env.CLIENT_URL || "http://localhost:5174",
