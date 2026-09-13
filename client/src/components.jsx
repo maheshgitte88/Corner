@@ -10,17 +10,17 @@ export function BrandMark({ className = "" }) {
     </span>
   );
 }
-export function Modal({ title, children, onClose, wide = false }) {
+export function Modal({ title, children, onClose, wide = false, className = "" }) {
   const dialogRef = useRef(null);
   useMobileDialog(true, dialogRef, onClose);
   return (
     <div
-      className="modal-backdrop"
+      className={`modal-backdrop${className ? ` ${className}-backdrop` : ""}`}
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <section
         ref={dialogRef}
-        className={`modal ${wide ? "wide" : ""}`}
+        className={`modal ${wide ? "wide" : ""} ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-label={title}

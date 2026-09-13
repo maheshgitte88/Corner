@@ -157,7 +157,7 @@ export function InvoiceView({ invoice, onClose, onCancel, canCancel = true }) {
     setShareNote("Sent on WhatsApp to " + data.to);
   };
   return (
-    <Modal title="Invoice details" onClose={onClose} wide>
+    <Modal title="Invoice details" onClose={onClose} wide className="invoice-sheet">
       <div className="invoice-toolbar">
         <div className="invoice-toolbar-start">
           <Badge>{invoice.status}</Badge>
@@ -211,7 +211,7 @@ export function InvoiceView({ invoice, onClose, onCancel, canCancel = true }) {
             }
           >
             <Link2 size={16} />
-            Copy link
+            Copy
           </button>
           <button
             type="button"
@@ -223,16 +223,16 @@ export function InvoiceView({ invoice, onClose, onCancel, canCancel = true }) {
             <MessageCircle size={16} />
             WhatsApp
           </button>
-          {invoice.status === "Completed" && canCancel && (
-            <button
-              type="button"
-              className="button danger"
-              onClick={() => setCancel(!cancel)}
-            >
-              Cancel sale
-            </button>
-          )}
         </div>
+        {invoice.status === "Completed" && canCancel && (
+          <button
+            type="button"
+            className="invoice-cancel"
+            onClick={() => setCancel(!cancel)}
+          >
+            Cancel sale
+          </button>
+        )}
       </div>
       {shareNote && <p className="invoice-share-note">{shareNote}</p>}
       {cancel && (

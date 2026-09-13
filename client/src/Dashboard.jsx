@@ -104,50 +104,52 @@ export default function Dashboard({ data, go, openInvoice }) {
               View all <ArrowUpRight size={16} />
             </button>
           </div>
-          {!d.recent.length ? (
-            <Empty
-              title="Ready for your first sale"
-              description="Create a bill and your latest invoices will appear here."
-            />
-          ) : (
-            <div className="table-wrap">
-              <ResponsiveTable>
-                <thead>
-                  <tr>
-                    <th>Invoice / customer</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {d.recent.map((i) => (
-                    <tr key={i._id}>
-                      <td>
-                        <b>{i.invoiceNumber}</b>
-                        <small>{i.customerSnapshot.name}</small>
-                      </td>
-                      <td>{date(i.createdAt)}</td>
-                      <td className="number">{money(i.grandTotal)}</td>
-                      <td>
-                        <Badge>{i.status}</Badge>
-                      </td>
-                      <td>
-                        <button
-                          className="icon-button"
-                          aria-label={`Open ${i.invoiceNumber}`}
-                          onClick={() => openInvoice(i)}
-                        >
-                          <ArrowUpRight size={18} />
-                        </button>
-                      </td>
+          <div className="panel-body">
+            {!d.recent.length ? (
+              <Empty
+                title="Ready for your first sale"
+                description="Create a bill and your latest invoices will appear here."
+              />
+            ) : (
+              <div className="table-wrap">
+                <ResponsiveTable>
+                  <thead>
+                    <tr>
+                      <th>Invoice / customer</th>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                      <th />
                     </tr>
-                  ))}
-                </tbody>
-              </ResponsiveTable>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {d.recent.map((i) => (
+                      <tr key={i._id}>
+                        <td>
+                          <b>{i.invoiceNumber}</b>
+                          <small>{i.customerSnapshot.name}</small>
+                        </td>
+                        <td>{date(i.createdAt)}</td>
+                        <td className="number">{money(i.grandTotal)}</td>
+                        <td>
+                          <Badge>{i.status}</Badge>
+                        </td>
+                        <td>
+                          <button
+                            className="icon-button"
+                            aria-label={`Open ${i.invoiceNumber}`}
+                            onClick={() => openInvoice(i)}
+                          >
+                            <ArrowUpRight size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </ResponsiveTable>
+              </div>
+            )}
+          </div>
         </section>
         <section className="panel">
           <div className="panel-heading">
@@ -157,25 +159,27 @@ export default function Dashboard({ data, go, openInvoice }) {
             </div>
             <span className="count">{d.lowStock.length}</span>
           </div>
-          {d.lowStock.length ? (
-            d.lowStock.slice(0, 5).map((p) => (
-              <div className="stock-row" key={p._id}>
-                <ProductImage product={p} />
-                <div>
-                  <b>{productLabel(p)}</b>
-                  <small>{p.sku}</small>
+          <div className="panel-body">
+            {d.lowStock.length ? (
+              d.lowStock.slice(0, 5).map((p) => (
+                <div className="stock-row" key={p._id}>
+                  <ProductImage product={p} />
+                  <div>
+                    <b>{productLabel(p)}</b>
+                    <small>{p.sku}</small>
+                  </div>
+                  <span className="stock-count">
+                    {p.stockQuantity} <small>{p.unit} left</small>
+                  </span>
                 </div>
-                <span className="stock-count">
-                  {p.stockQuantity} <small>{p.unit} left</small>
-                </span>
-              </div>
-            ))
-          ) : (
-            <Empty
-              title="Stock looks good"
-              description="No active products are running low."
-            />
-          )}
+              ))
+            ) : (
+              <Empty
+                title="Stock looks good"
+                description="No active products are running low."
+              />
+            )}
+          </div>
           <button className="panel-link" onClick={() => go("Inventory")}>
             Manage inventory <ArrowRight size={16} />
           </button>
@@ -190,11 +194,13 @@ export default function Dashboard({ data, go, openInvoice }) {
             </div>
             <span className="count">{nearExpiry.length}</span>
           </div>
-          <ExpiryList
-            items={nearExpiry}
-            emptyTitle="No near-expiry stock"
-            emptyDescription="Products nearing expiry will appear here."
-          />
+          <div className="panel-body">
+            <ExpiryList
+              items={nearExpiry}
+              emptyTitle="No near-expiry stock"
+              emptyDescription="Products nearing expiry will appear here."
+            />
+          </div>
           <button className="panel-link" onClick={() => go("Reports")}>
             Open reports <ArrowRight size={16} />
           </button>
@@ -207,11 +213,13 @@ export default function Dashboard({ data, go, openInvoice }) {
             </div>
             <span className="count">{expired.length}</span>
           </div>
-          <ExpiryList
-            items={expired}
-            emptyTitle="No expired stock on hand"
-            emptyDescription="Expired products with remaining stock will appear here."
-          />
+          <div className="panel-body">
+            <ExpiryList
+              items={expired}
+              emptyTitle="No expired stock on hand"
+              emptyDescription="Expired products with remaining stock will appear here."
+            />
+          </div>
           <button className="panel-link" onClick={() => go("Reports")}>
             Open reports <ArrowRight size={16} />
           </button>
