@@ -205,6 +205,14 @@ button {
   background: #214e3f;
   color: #fff;
   margin-right: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 .shop-switch {
   display: flex;
@@ -1384,7 +1392,10 @@ tr:last-child td {
   margin-bottom: 85px;
 }
 .login-story .brand-mark {
-  background: #3c6243;
+  background: transparent;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
 }
 .login-story > .eyebrow {
   color: #abc092;

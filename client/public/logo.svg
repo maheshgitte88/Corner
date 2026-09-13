@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Counter Cloud">
+  <rect width="64" height="64" rx="14" fill="#214e3f"/>
+  <!-- Checkout counter -->
+  <rect x="12" y="36" width="40" height="8" rx="2" fill="#ffffff"/>
+  <rect x="14" y="30" width="36" height="7" rx="1.5" fill="#ffffff"/>
+  <!-- Register / reader -->
+  <rect x="36" y="16" width="14" height="14" rx="2.5" fill="#ffffff"/>
+  <rect x="38.5" y="18.5" width="9" height="5.5" rx="1" fill="#214e3f"/>
+  <rect x="39.5" y="26" width="7" height="2" rx="0.8" fill="#214e3f"/>
+  <!-- Accent -->
+  <circle cx="19" cy="33.5" r="1.6" fill="#c5d68a"/>
+</svg>

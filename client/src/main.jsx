@@ -13,7 +13,6 @@ import {
   LogOut,
   Menu,
   X,
-  Store,
   CheckCircle2,
   Building2,
   CreditCard,
@@ -21,7 +20,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { api } from "./api";
-import { Field, Form, Loading } from "./components";
+import { Field, Form, Loading, BrandMark } from "./components";
 import Dashboard from "./Dashboard";
 import Products from "./Products";
 import POS from "./POS";
@@ -152,9 +151,7 @@ function App() {
       <main className="login">
         <section className="login-story">
           <div className="brand">
-            <span className="brand-mark">
-              <Store />
-            </span>
+            <BrandMark />
             counter<span className="brand-dot">.</span>
           </div>
           <span className="eyebrow">
@@ -230,9 +227,7 @@ function App() {
     return (
       <main className="password-onboarding">
         <div className="brand">
-          <span className="brand-mark">
-            <Store />
-          </span>
+          <BrandMark />
           counter.
         </div>
         <PasswordForm forced done={logout} />
@@ -305,9 +300,7 @@ function App() {
             go(isPlatform ? "Overview" : "Dashboard");
           }}
         >
-          <span className="brand-mark">
-            <Store size={22} />
-          </span>
+          <BrandMark />
           counter<span className="brand-dot">.</span>
         </a>
         <div className="shop-switch">

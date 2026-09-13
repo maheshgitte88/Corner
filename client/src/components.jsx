@@ -2,6 +2,14 @@ import React, { useState, useRef } from "react";
 import { useMobileDialog } from "./mobile";
 import { X, Package, Search, LoaderCircle } from "lucide-react";
 import { productLabel } from "./api";
+
+export function BrandMark({ className = "" }) {
+  return (
+    <span className={`brand-mark ${className}`.trim()} aria-hidden="true">
+      <img src="/logo.svg" alt="" width="34" height="34" decoding="async" />
+    </span>
+  );
+}
 export function Modal({ title, children, onClose, wide = false }) {
   const dialogRef = useRef(null);
   useMobileDialog(true, dialogRef, onClose);
