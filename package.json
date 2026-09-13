@@ -6,6 +6,9 @@
     "client",
     "server"
   ],
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "concurrently -k \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w client",

@@ -7,13 +7,11 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "decimal.js": "^10.6.0",
+    "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "lucide-react": "^0.460.0",
-    "decimal.js": "^10.6.0"
-  },
-  "devDependencies": {
-    "vite": "^6.1.0",
-    "@vitejs/plugin-react": "^4.3.4"
+    "vite": "^6.1.0"
   }
 }
