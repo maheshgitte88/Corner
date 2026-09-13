@@ -19,6 +19,8 @@ export async function changeStock(
 ) {
   const { Product, InventoryTransaction } = models;
   if (next < 0) throw fail("Insufficient stock", 409);
+  if (product.kind === "parent")
+    throw fail("Parent products do not hold stock", 400);
   if (
     !["kg", "gram", "litre", "ml"].includes(product.unit) &&
     !Number.isInteger(next)
@@ -87,11 +89,19 @@ export async function checkout(input, user, models) {
       const lines = input.items.map((item) => {
         const p = products.find((p) => p.id === item.productId);
         if (!p) throw fail("A product is no longer available", 409);
+        if (p.kind === "parent")
+          throw fail("Choose a product size or pack before checkout", 409);
+        if (!["standalone", "variant"].includes(p.kind || "standalone"))
+          throw fail("A product is no longer available", 409);
         if (p.stockQuantity < item.quantity)
-          throw fail(`Insufficient stock for ${p.name}`, 409);
+          throw fail(
+            `Insufficient stock for ${p.variantLabel ? `${p.name} · ${p.variantLabel}` : p.name}`,
+            409,
+          );
         return {
           productId: p.id,
           productName: p.name,
+          variantLabel: p.variantLabel || "",
           sku: p.sku,
           unit: p.unit,
           quantity: item.quantity,

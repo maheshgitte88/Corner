@@ -1,7 +1,7 @@
 import { ResponsiveTable } from "./components";
 import React, { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, ArrowUpRight } from "lucide-react";
-import { api, money, date } from "./api";
+import { api, money, date, productLabel, isSellable } from "./api";
 import {
   PageHeading,
   Modal,
@@ -92,8 +92,10 @@ export function Directory({ data, type, reload, notify, openInvoice }) {
                               .filter((i) => i.status === "Completed")
                               .reduce((s, i) => s + i.grandTotal, 0),
                           )
-                        : data.products.filter((p) => p.category?._id === r._id)
-                            .length}
+                        : data.products.filter(
+                            (p) =>
+                              p.category?._id === r._id && isSellable(p),
+                          ).length}
                     </td>
                     <td>
                       <div className="row-actions">
@@ -492,11 +494,14 @@ export function Reports({ data }) {
                 <tbody>
                   {data.products
                     .filter(
-                      (p) => p.isActive && p.stockQuantity <= p.minimumStock,
+                      (p) =>
+                        isSellable(p) &&
+                        p.isActive &&
+                        p.stockQuantity <= p.minimumStock,
                     )
                     .map((p) => (
                       <tr key={p._id}>
-                        <td>{p.name}</td>
+                        <td>{productLabel(p)}</td>
                         <td>
                           {p.stockQuantity} {p.unit}
                         </td>
@@ -509,6 +514,84 @@ export function Reports({ data }) {
               </ResponsiveTable>
             </div>
           </section>
+          <div className="dashboard-columns">
+            <section className="panel">
+              <div className="panel-heading">
+                <h2>Near expiry</h2>
+                <span className="muted">Tomorrow through next 30 days</span>
+              </div>
+              <div className="table-wrap">
+                <ResponsiveTable>
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Expiry to</th>
+                      <th>Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(report.nearExpiry || []).map((p) => (
+                      <tr key={p._id}>
+                        <td>
+                          <b>{productLabel(p)}</b>
+                          <small>{p.sku}</small>
+                        </td>
+                        <td>
+                          {new Date(p.expiryTo).toLocaleDateString("en-IN", {
+                            timeZone: "Asia/Kolkata",
+                          })}
+                        </td>
+                        <td>
+                          {p.stockQuantity} {p.unit}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </ResponsiveTable>
+              </div>
+              {!(report.nearExpiry || []).length && (
+                <Empty title="No near-expiry stock" />
+              )}
+            </section>
+            <section className="panel">
+              <div className="panel-heading">
+                <h2>Expired with stock</h2>
+                <span className="muted">Today or earlier</span>
+              </div>
+              <div className="table-wrap">
+                <ResponsiveTable>
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Expired on</th>
+                      <th>Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(report.expired || []).map((p) => (
+                      <tr key={p._id}>
+                        <td>
+                          <b>{productLabel(p)}</b>
+                          <small>{p.sku}</small>
+                        </td>
+                        <td>
+                          {new Date(p.expiryTo).toLocaleDateString("en-IN", {
+                            timeZone: "Asia/Kolkata",
+                          })}
+                        </td>
+                        <td>
+                          {p.stockQuantity} {p.unit}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </ResponsiveTable>
+              </div>
+              {!(report.expired || []).length && (
+                <Empty title="No expired stock on hand" />
+              )}
+            </section>
+          </div>
         </>
       )}
     </>

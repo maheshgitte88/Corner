@@ -10,7 +10,9 @@ import { changeStock, atomic } from "./services.js";
 try {
   await connect();
   await Promise.all(
-    [...Object.values(legacy), ...Object.values(platform)].map((m) => m.init()),
+    [...Object.values(legacy), ...Object.values(platform)]
+      .filter((m) => typeof m?.init === "function")
+      .map((m) => m.init()),
   );
   const email = process.env.PLATFORM_ADMIN_EMAIL?.toLowerCase(),
     password = process.env.PLATFORM_ADMIN_PASSWORD;
@@ -158,6 +160,7 @@ try {
               minimumStock,
               taxPercent,
               stockQuantity: 0,
+              kind: "standalone",
             },
           ],
           { session },
@@ -172,6 +175,62 @@ try {
           "",
           M,
         );
+      });
+    }
+    if (!(await M.Product.exists({ name: "Water Bottle", kind: "parent" }))) {
+      const near = new Date();
+      near.setUTCDate(near.getUTCDate() + 20);
+      await atomic(async (session) => {
+        const [parent] = await M.Product.create(
+          [
+            {
+              name: "Water Bottle",
+              kind: "parent",
+              category: cats.Beverages._id,
+              brand: "Corner Springs",
+              sellingPrice: 0,
+              stockQuantity: 0,
+            },
+          ],
+          { session },
+        );
+        for (const row of [
+          ["250 ml", "WB-250", 1500, 20],
+          ["500 ml", "WB-500", 2500, 3],
+          ["1 L", "WB-1L", 4000, 12],
+        ]) {
+          const [variant] = await M.Product.create(
+            [
+              {
+                name: "Water Bottle",
+                kind: "variant",
+                parentId: parent._id,
+                variantLabel: row[0],
+                sku: row[1],
+                category: cats.Beverages._id,
+                brand: "Corner Springs",
+                sellingPrice: row[2],
+                purchasePrice: Math.round(row[2] * 0.7),
+                unit: "pcs",
+                minimumStock: 5,
+                taxPercent: 5,
+                stockQuantity: 0,
+                expiryTo: near,
+              },
+            ],
+            { session },
+          );
+          await changeStock(
+            variant,
+            row[3],
+            "Opening",
+            "Demo opening stock",
+            user.id,
+            session,
+            "",
+            M,
+          );
+        }
       });
     }
   }

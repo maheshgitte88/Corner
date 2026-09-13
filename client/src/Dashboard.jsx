@@ -1,5 +1,5 @@
 import { ResponsiveTable } from "./components";
-import React, { useState } from "react";
+import React from "react";
 import {
   Plus,
   ArrowUpRight,
@@ -10,10 +10,36 @@ import {
   ShoppingBag,
   ArrowRight,
 } from "lucide-react";
-import { money, date, stockState } from "./api";
+import { money, date, productLabel } from "./api";
 import { PageHeading, ProductImage, Badge, Empty } from "./components";
+
+function ExpiryList({ items, emptyTitle, emptyDescription }) {
+  if (!items?.length) {
+    return <Empty title={emptyTitle} description={emptyDescription} />;
+  }
+  return items.slice(0, 5).map((p) => (
+    <div className="stock-row" key={p._id}>
+      <ProductImage product={p} />
+      <div>
+        <b>{productLabel(p)}</b>
+        <small>
+          {p.sku} · to{" "}
+          {new Date(p.expiryTo).toLocaleDateString("en-IN", {
+            timeZone: "Asia/Kolkata",
+          })}
+        </small>
+      </div>
+      <span className="stock-count">
+        {p.stockQuantity} <small>{p.unit}</small>
+      </span>
+    </div>
+  ));
+}
+
 export default function Dashboard({ data, go, openInvoice }) {
   const d = data.dashboard;
+  const expired = d.expired || [];
+  const nearExpiry = d.nearExpiry || [];
   const cards = [
     [
       "Sales today",
@@ -35,8 +61,8 @@ export default function Dashboard({ data, go, openInvoice }) {
     ],
     [
       "Needs attention",
-      d.lowStock.length + d.outOfStock,
-      `${d.outOfStock} out of stock`,
+      d.lowStock.length + d.outOfStock + nearExpiry.length + expired.length,
+      `${d.outOfStock} out · ${nearExpiry.length} near · ${expired.length} expired`,
       AlertTriangle,
     ],
   ];
@@ -136,7 +162,7 @@ export default function Dashboard({ data, go, openInvoice }) {
               <div className="stock-row" key={p._id}>
                 <ProductImage product={p} />
                 <div>
-                  <b>{p.name}</b>
+                  <b>{productLabel(p)}</b>
                   <small>{p.sku}</small>
                 </div>
                 <span className="stock-count">
@@ -152,6 +178,42 @@ export default function Dashboard({ data, go, openInvoice }) {
           )}
           <button className="panel-link" onClick={() => go("Inventory")}>
             Manage inventory <ArrowRight size={16} />
+          </button>
+        </section>
+      </div>
+      <div className="dashboard-columns">
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Near expiry</h2>
+              <p>Tomorrow through the next 30 days</p>
+            </div>
+            <span className="count">{nearExpiry.length}</span>
+          </div>
+          <ExpiryList
+            items={nearExpiry}
+            emptyTitle="No near-expiry stock"
+            emptyDescription="Products nearing expiry will appear here."
+          />
+          <button className="panel-link" onClick={() => go("Reports")}>
+            Open reports <ArrowRight size={16} />
+          </button>
+        </section>
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Expired with stock</h2>
+              <p>Expiry date is today or earlier</p>
+            </div>
+            <span className="count">{expired.length}</span>
+          </div>
+          <ExpiryList
+            items={expired}
+            emptyTitle="No expired stock on hand"
+            emptyDescription="Expired products with remaining stock will appear here."
+          />
+          <button className="panel-link" onClick={() => go("Reports")}>
+            Open reports <ArrowRight size={16} />
           </button>
         </section>
       </div>

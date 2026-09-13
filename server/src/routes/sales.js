@@ -74,15 +74,37 @@ router.get("/dashboard", async (req, res) => {
   }).format(new Date());
   const start = new Date(today + "T00:00:00+05:30");
   const month = new Date(today.slice(0, 7) + "-01T00:00:00+05:30");
-  const [products, sales, recent] = await Promise.all([
-    req.models.Product.find({ isActive: true }).lean(),
+  const [allProducts, sales, recent] = await Promise.all([
+    req.models.Product.find(V.sellableFilter).lean(),
     req.models.Invoice.find({
       status: "Completed",
       createdAt: { $gte: month },
     }).lean(),
     req.models.Invoice.find().sort({ createdAt: -1 }).limit(6).lean(),
   ]);
+  const parentIds = [
+    ...new Set(
+      allProducts
+        .filter((p) => p.kind === "variant" && p.parentId)
+        .map((p) => String(p.parentId)),
+    ),
+  ];
+  const parents = parentIds.length
+    ? await req.models.Product.find({ _id: { $in: parentIds } }).lean()
+    : [];
+  const parentNames = Object.fromEntries(
+    parents.map((p) => [String(p._id), p.name]),
+  );
+  const products = allProducts.map((p) => ({
+    ...p,
+    parentName: p.parentId ? parentNames[String(p.parentId)] : undefined,
+    displayName: V.productDisplayName({
+      ...p,
+      parentName: p.parentId ? parentNames[String(p.parentId)] : undefined,
+    }),
+  }));
   const todaySales = sales.filter((i) => i.createdAt >= start);
+  const { nearExpiry, expired } = V.expiryBuckets(products);
   res.json({
     totalProducts: products.length,
     totalQuantity: products.reduce((s, p) => s + p.stockQuantity, 0),
@@ -90,6 +112,9 @@ router.get("/dashboard", async (req, res) => {
       (p) => p.stockQuantity > 0 && p.stockQuantity <= p.minimumStock,
     ),
     outOfStock: products.filter((p) => p.stockQuantity === 0).length,
+    nearExpiry,
+    expired,
+    expiredCount: expired.length,
     todaySales: todaySales.reduce((s, i) => s + i.grandTotal, 0),
     todayInvoices: todaySales.length,
     monthSales: sales.reduce((s, i) => s + i.grandTotal, 0),
@@ -114,7 +139,9 @@ router.get("/reports/sales", async (req, res) => {
     monthly[day.slice(0, 7)] = (monthly[day.slice(0, 7)] || 0) + i.grandTotal;
     for (const l of i.items) {
       products[l.productId] ??= {
-        name: l.productName,
+        name: l.variantLabel
+          ? `${l.productName} · ${l.variantLabel}`
+          : l.productName,
         sku: l.sku,
         quantity: 0,
         total: 0,
@@ -123,6 +150,29 @@ router.get("/reports/sales", async (req, res) => {
       products[l.productId].total += l.lineTotal;
     }
   }
+  const catalogue = await req.models.Product.find(V.sellableFilter).lean();
+  const parentIds = [
+    ...new Set(
+      catalogue
+        .filter((p) => p.kind === "variant" && p.parentId)
+        .map((p) => String(p.parentId)),
+    ),
+  ];
+  const parents = parentIds.length
+    ? await req.models.Product.find({ _id: { $in: parentIds } }).lean()
+    : [];
+  const parentNames = Object.fromEntries(
+    parents.map((p) => [String(p._id), p.name]),
+  );
+  const decorated = catalogue.map((p) => ({
+    ...p,
+    parentName: p.parentId ? parentNames[String(p.parentId)] : undefined,
+    displayName: V.productDisplayName({
+      ...p,
+      parentName: p.parentId ? parentNames[String(p.parentId)] : undefined,
+    }),
+  }));
+  const { nearExpiry, expired } = V.expiryBuckets(decorated);
   res.json({
     count: invoices.length,
     total: invoices.reduce((s, i) => s + i.grandTotal, 0),
@@ -130,6 +180,8 @@ router.get("/reports/sales", async (req, res) => {
     payments,
     daily,
     monthly,
+    nearExpiry,
+    expired,
   });
 });
 export default router;

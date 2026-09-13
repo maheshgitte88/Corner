@@ -110,7 +110,10 @@ router.get("/subscription", async (req, res) =>
     },
     access: accessStatus(req.tenant),
     usage: {
-      products: await req.models.Product.countDocuments({ isActive: true }),
+      products: await req.models.Product.countDocuments({
+        isActive: true,
+        kind: { $ne: "parent" },
+      }),
       users: await User.countDocuments({
         tenantId: req.tenant.id,
         isActive: true,

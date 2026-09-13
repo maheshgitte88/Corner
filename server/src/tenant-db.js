@@ -40,7 +40,14 @@ export async function readyTenant(tenantId) {
   if (!initialized.has(key))
     initialized.set(
       key,
-      Promise.all(Object.values(models).map((m) => m.init())).catch((e) => {
+      (async () => {
+        await legacy.ensureProductIndexes(models.Product.db);
+        await Promise.all(
+          Object.values(models)
+            .filter((m) => typeof m?.init === "function")
+            .map((m) => m.init()),
+        );
+      })().catch((e) => {
         initialized.delete(key);
         throw e;
       }),

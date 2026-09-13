@@ -5,7 +5,14 @@ const ref = (name) => ({ type: Schema.Types.ObjectId, ref: name });
 const model = (name, fields) => mongoose.model(name, new Schema(fields, opts));
 export const Product = model("Product", {
   name: { type: String, required: true },
-  sku: { type: String, required: true, unique: true },
+  kind: {
+    type: String,
+    enum: ["standalone", "parent", "variant"],
+    default: "standalone",
+  },
+  parentId: { type: Schema.Types.ObjectId, ref: "Product", default: null },
+  variantLabel: { type: String, default: "" },
+  sku: String,
   barcode: String,
   category: ref("Category"),
   brand: String,
@@ -14,11 +21,13 @@ export const Product = model("Product", {
   imageKey: String,
   imageProvider: { type: String, enum: ["", "cloudinary", "s3"], default: "" },
   purchasePrice: { type: Number, default: 0 },
-  sellingPrice: { type: Number, required: true, min: 1 },
+  sellingPrice: { type: Number, default: 0, min: 0 },
   taxPercent: { type: Number, default: 0 },
   stockQuantity: { type: Number, default: 0, min: 0 },
   minimumStock: { type: Number, default: 5 },
   unit: { type: String, default: "pcs" },
+  expiryFrom: Date,
+  expiryTo: Date,
   isActive: { type: Boolean, default: true },
 });
 export const Category = model("Category", {
@@ -105,3 +114,28 @@ export const Counter = model("Counter", {
 Invoice.schema.index({ createdAt: -1 });
 InventoryTransaction.schema.index({ productId: 1, createdAt: -1 });
 Product.schema.index({ barcode: 1 });
+Product.schema.index({ parentId: 1 });
+Product.schema.index({ kind: 1, isActive: 1 });
+// Named sparse unique index so parents can omit SKU. Replaces legacy sku_1.
+Product.schema.index(
+  { sku: 1 },
+  { unique: true, sparse: true, name: "sku_sparse_1" },
+);
+export async function ensureProductIndexes(connection = mongoose.connection) {
+  const collection = connection.collection("products");
+  try {
+    const indexes = await collection.indexes();
+    const legacy = indexes.find((index) => index.name === "sku_1");
+    if (legacy && !legacy.sparse) await collection.dropIndex("sku_1");
+  } catch (error) {
+    if (error.codeName !== "NamespaceNotFound" && error.code !== 26) throw error;
+  }
+  try {
+    await collection.updateMany(
+      { $or: [{ kind: { $exists: false } }, { kind: null }, { kind: "" }] },
+      { $set: { kind: "standalone" } },
+    );
+  } catch (error) {
+    if (error.codeName !== "NamespaceNotFound" && error.code !== 26) throw error;
+  }
+}

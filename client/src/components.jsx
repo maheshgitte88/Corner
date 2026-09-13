@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useMobileDialog } from "./mobile";
 import { X, Package, Search, LoaderCircle } from "lucide-react";
+import { productLabel } from "./api";
 export function Modal({ title, children, onClose, wide = false }) {
   const dialogRef = useRef(null);
   useMobileDialog(true, dialogRef, onClose);
@@ -53,8 +54,9 @@ export function SearchBox({ value, onChange, placeholder = "Search…" }) {
   );
 }
 export function ProductImage({ product }) {
+  const label = productLabel(product);
   return (
-    <div className={`product-image tone-${(product.name || "").length % 4}`}>
+    <div className={`product-image tone-${(label || "").length % 4}`}>
       {product.imageUrl ? (
         <img
           src={product.imageUrl}
@@ -69,14 +71,24 @@ export function ProductImage({ product }) {
     </div>
   );
 }
-export function Badge({ children }) {
-  return (
-    <span
-      className={`badge ${["Low stock", "Cancelled", "trial", "expired", "suspended", "Archived", "Inactive"].includes(children) ? "amber" : children === "Out of stock" ? "red" : "green"}`}
-    >
-      {children}
-    </span>
-  );
+export function Badge({ children, tone }) {
+  const label = typeof children === "string" ? children : "";
+  const auto =
+    label === "Out of stock" || label === "Expired"
+      ? "red"
+      : [
+            "Low stock",
+            "Cancelled",
+            "trial",
+            "expired",
+            "Near expiry",
+            "suspended",
+            "Archived",
+            "Inactive",
+          ].includes(label)
+        ? "amber"
+        : "green";
+  return <span className={`badge ${tone || auto}`}>{children}</span>;
 }
 export function Empty({
   title = "Nothing here yet",

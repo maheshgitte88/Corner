@@ -110,7 +110,10 @@ router.get("/clients/:id", async (req, res) => {
     tenant,
     access: accessStatus(tenant),
     usage: {
-      products: await models.Product.countDocuments({ isActive: true }),
+      products: await models.Product.countDocuments({
+        isActive: true,
+        kind: { $ne: "parent" },
+      }),
       users: await User.countDocuments({ tenantId: tenant.id, isActive: true }),
     },
     members: await User.find({ tenantId: tenant.id }).select(

@@ -5,8 +5,11 @@ import mongoose from "mongoose";
 import * as platform from "./platform-models.js";
 try {
   await connect();
+  await models.ensureProductIndexes();
   await Promise.all(
-    [...Object.values(models), ...Object.values(platform)].map((m) => m.init()),
+    [...Object.values(models), ...Object.values(platform)]
+      .filter((m) => typeof m?.init === "function")
+      .map((m) => m.init()),
   );
   const server = app.listen(config.port, () =>
     console.log(

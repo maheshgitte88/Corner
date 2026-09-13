@@ -75,7 +75,9 @@ before(
     const legacy = await import("../server/src/models.js");
     U = legacy.User;
     await Promise.all(
-      [...Object.values(P), ...Object.values(legacy)].map((m) => m.init()),
+      [...Object.values(P), ...Object.values(legacy)]
+        .filter((m) => typeof m?.init === "function")
+        .map((m) => m.init()),
     );
     const tenantDb = await import("../server/src/tenant-db.js");
     modelsFor = tenantDb.readyTenant;

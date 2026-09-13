@@ -208,6 +208,7 @@ export async function renew(tenantId, input, actor) {
       const models = await readyTenant(tenantId);
       const products = await models.Product.countDocuments({
         isActive: true,
+        kind: { $ne: "parent" },
       }).session(session);
       const users = await User.countDocuments({
         tenantId,
@@ -268,7 +269,13 @@ export async function renew(tenantId, input, actor) {
     throw e;
   }
 }
-export async function reserveCapacity(tenantId, models, kind, session) {
+export async function reserveCapacity(
+  tenantId,
+  models,
+  kind,
+  session,
+  amount = 1,
+) {
   // Serialize capacity checks with plan changes and other creates, inside the same transaction.
   const tenant = await Tenant.findOneAndUpdate(
     {
@@ -282,7 +289,10 @@ export async function reserveCapacity(tenantId, models, kind, session) {
   if (!tenant) throw fail("Your subscription is not active", 403);
   const count =
     kind === "products"
-      ? await models.Product.countDocuments({ isActive: true }).session(session)
+      ? await models.Product.countDocuments({
+          isActive: true,
+          kind: { $ne: "parent" },
+        }).session(session)
       : await User.countDocuments({ tenantId, isActive: true }).session(
           session,
         );
@@ -290,7 +300,7 @@ export async function reserveCapacity(tenantId, models, kind, session) {
     tenant.subscription.planSnapshot[
       kind === "products" ? "maxProducts" : "maxUsers"
     ];
-  if (count >= limit)
+  if (count + amount > limit)
     throw fail(
       `Your package allows ${limit} active ${kind}. Contact the platform administrator to upgrade.`,
       403,

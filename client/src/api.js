@@ -41,3 +41,33 @@ export const stockState = (p) =>
     : p.stockQuantity <= p.minimumStock
       ? "Low stock"
       : "In stock";
+export const productLabel = (p) =>
+  p.displayName ||
+  (p.kind === "variant" && p.variantLabel
+    ? `${p.parentName || p.name} · ${p.variantLabel}`
+    : p.name);
+export const isSellable = (p) => p.kind !== "parent";
+export const digitsOnly = (v = "") => String(v).replace(/\D/g, "");
+export const expiryState = (p, now = new Date()) => {
+  if (!p?.expiryTo) return "";
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(now);
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(new Date(p.expiryTo));
+  if (day <= today) return "Expired";
+  const near = new Date(`${today}T12:00:00+05:30`);
+  near.setUTCDate(near.getUTCDate() + 30);
+  const nearLimit = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(near);
+  if (day <= nearLimit) return "Near expiry";
+  return "";
+};
+export const dateInput = (v) =>
+  v
+    ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(
+        new Date(v),
+      )
+    : "";

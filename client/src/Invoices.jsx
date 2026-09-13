@@ -127,7 +127,7 @@ export function InvoiceView({ invoice, onClose, onCancel, canCancel = true }) {
             {invoice.items.map((l, i) => (
               <tr key={i}>
                 <td>
-                  <b>{l.productName}</b>
+                  <b>{l.variantLabel ? `${l.productName} · ${l.variantLabel}` : l.productName}</b>
                   <small>{l.sku}</small>
                 </td>
                 <td>

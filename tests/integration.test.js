@@ -27,9 +27,9 @@ before(
     const legacy = await import("../server/src/models.js");
     const platform = await import("../server/src/platform-models.js");
     await Promise.all(
-      [...Object.values(legacy), ...Object.values(platform)].map((m) =>
-        m.init(),
-      ),
+      [...Object.values(legacy), ...Object.values(platform)]
+        .filter((m) => typeof m?.init === "function")
+        .map((m) => m.init()),
     );
     const plan = await platform.Package.create({
       name: "Test",
@@ -306,4 +306,94 @@ test("simultaneous cancellations restore stock once", async () => {
     }),
     1,
   );
+});
+
+test("parent with variants sells by variant id and snapshots label", async () => {
+  const { body: family } = await admin
+    .post("/api/products")
+    .send({
+      name: "Water Bottle",
+      variants: [
+        {
+          variantLabel: "500 ml",
+          sku: "WB-500-" + randomUUID().slice(0, 8),
+          sellingPrice: 2000,
+          stockQuantity: 5,
+          unit: "pcs",
+          minimumStock: 2,
+        },
+        {
+          variantLabel: "1 L",
+          sku: "WB-1L-" + randomUUID().slice(0, 8),
+          sellingPrice: 3500,
+          stockQuantity: 8,
+          unit: "pcs",
+          minimumStock: 2,
+        },
+      ],
+    })
+    .expect(201);
+  assert.equal(family.kind, "parent");
+  assert.equal(family.variants.length, 2);
+  const half = family.variants.find((v) => v.variantLabel === "500 ml");
+  await admin.post("/api/invoices").send(sale(family)).expect(409);
+  const { body: invoice } = await admin
+    .post("/api/invoices")
+    .send(sale(half, 1))
+    .expect(201);
+  assert.equal(invoice.items[0].variantLabel, "500 ml");
+  assert.equal(invoice.items[0].productName, "Water Bottle");
+  assert.equal((await M.Product.findById(half._id)).stockQuantity, 4);
+  assert.equal((await M.Product.findById(family._id)).kind, "parent");
+});
+
+test("dashboard and reports expose near-expiry sellable stock", async () => {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(new Date());
+  const near = new Date(`${today}T12:00:00+05:30`);
+  near.setUTCDate(near.getUTCDate() + 10);
+  const nearDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(near);
+  const { body: p } = await admin
+    .post("/api/products")
+    .send({
+      name: "Milk pack",
+      sku: "MILK-" + randomUUID().slice(0, 8),
+      sellingPrice: 5000,
+      stockQuantity: 4,
+      minimumStock: 1,
+      unit: "pcs",
+      expiryFrom: today,
+      expiryTo: nearDate,
+    })
+    .expect(201);
+  const { body: dash } = await admin.get("/api/dashboard").expect(200);
+  assert.ok(dash.nearExpiry.some((row) => row._id === p._id));
+  assert.ok(dash.nearExpiry.every((row) => row.kind !== "parent"));
+  const { body: report } = await admin.get("/api/reports/sales").expect(200);
+  assert.ok(report.nearExpiry.some((row) => row._id === p._id));
+});
+
+test("expiry date today counts as expired stock", async () => {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(new Date());
+  const { body: p } = await admin
+    .post("/api/products")
+    .send({
+      name: "Today expiry",
+      sku: "EXP-" + randomUUID().slice(0, 8),
+      sellingPrice: 1000,
+      stockQuantity: 3,
+      minimumStock: 1,
+      unit: "pcs",
+      expiryFrom: today,
+      expiryTo: today,
+    })
+    .expect(201);
+  const { body: dash } = await admin.get("/api/dashboard").expect(200);
+  assert.ok(dash.expired.some((row) => row._id === p._id));
+  assert.ok(!dash.nearExpiry.some((row) => row._id === p._id));
 });

@@ -54,7 +54,9 @@ Owners sign in using the same application URL and are routed to their own shop. 
 
 **Subscription** shows the saved plan, expiry, usage and the owner's payment history. Expired/suspended clients keep read access to their existing records and can change their password, but server-side checks reject sales, edits, uploads and team mutations. Feature restrictions remain in effect. Expiry is checked on each request, so no scheduler is required. Contact the platform administrator to renew.
 
-Existing retail functionality remains: decimal-safe prices, weighted quantities, item/bill discounts, tax-exclusive GST, atomic checkout, inventory ledger, duplicate checkout protection, invoice snapshots, cancellation with stock restoration, A4/80 mm printing, date-filtered history and reports. Subscription receipts are separate from retail invoices and never enter client sales reports.
+Existing retail functionality remains: decimal-safe prices, weighted quantities, item/bill discounts, tax-exclusive GST, atomic checkout, inventory ledger, duplicate checkout protection, invoice snapshots, cancellation with stock restoration, A4/80 mm printing, date-filtered history and reports. Products may be simple SKUs or a parent with size/pack variants (each variant has its own SKU, price, stock and optional expiry window). Low stock, out of stock and near-expiry (within 30 days) are tracked per sellable SKU. On POS, entering a mobile that matches a saved customer selects that customer automatically. Subscription receipts are separate from retail invoices and never enter client sales reports.
+
+Package limits count **active sellable products** (standalones and variants). Parent catalogue rows do not consume capacity.
 
 ## Isolation and authorization
 
