@@ -143,7 +143,11 @@ router.use((req, res, next) => {
   if (
     req.user.role === "cashier" &&
     ((!["GET", "HEAD"].includes(req.method) &&
-      !(req.method === "POST" && path.replace(/\/$/, "") === "/invoices")) ||
+      !(
+        req.method === "POST" &&
+        (path.replace(/\/$/, "") === "/invoices" ||
+          /^\/invoices\/[a-f0-9]{24}\/(share|whatsapp)$/i.test(path))
+      )) ||
       path.startsWith("/team") ||
       path.startsWith("/reports"))
   )

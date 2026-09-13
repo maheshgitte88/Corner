@@ -16,6 +16,19 @@ export const config = {
   port: Number(process.env.PORT || 4100),
   origin: process.env.CLIENT_URL || "http://localhost:5174",
   production: process.env.NODE_ENV === "production",
+  publicAppUrl: (
+    process.env.PUBLIC_APP_URL ||
+    process.env.CLIENT_URL ||
+    "http://localhost:5174"
+  ).replace(/\/$/, ""),
+  vobiz: {
+    authId: process.env.VOBIZ_AUTH_ID || "",
+    authToken: process.env.VOBIZ_AUTH_TOKEN || "",
+    channelId: process.env.VOBIZ_CHANNEL_ID || "",
+    wabaId: process.env.VOBIZ_WABA_ID || "",
+    template: process.env.VOBIZ_INVOICE_TEMPLATE || "invoice_ready",
+    language: process.env.VOBIZ_TEMPLATE_LANGUAGE || "en",
+  },
 };
 export async function connect() {
   if (!process.env.MONGODB_URI)

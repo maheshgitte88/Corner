@@ -25,6 +25,7 @@ import Dashboard from "./Dashboard";
 import Products from "./Products";
 import POS from "./POS";
 import Invoices, { InvoiceView } from "./Invoices";
+import PublicInvoice from "./PublicInvoice";
 import { Directory, Settings, Reports } from "./Management";
 import Platform from "./Platform";
 import Account, { PasswordForm } from "./Account";
@@ -526,4 +527,9 @@ function App() {
     </div>
   );
 }
-createRoot(document.getElementById("root")).render(<App />);
+const publicToken = window.location.pathname.match(
+  /^\/b\/([A-Za-z0-9_-]+)$/,
+);
+createRoot(document.getElementById("root")).render(
+  publicToken ? <PublicInvoice token={publicToken[1]} /> : <App />,
+);

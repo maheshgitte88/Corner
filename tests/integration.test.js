@@ -140,6 +140,10 @@ test("product, sale, snapshots, cancellation and reprint retain consistent histo
     .expect(200);
   assert.equal((await M.Product.findById(p._id)).stockQuantity, 8);
   const saved = (await admin.get("/api/invoices/" + i._id).expect(200)).body;
+  assert.equal(saved.status, "Completed");
+  assert.match(saved.shareUrl, /\/b\//);
+  const token = saved.shareUrl.split("/b/")[1];
+  await request(app).get("/api/public/invoices/" + token).expect(200);
   assert.equal(saved.items[0].unitPrice, 10000);
   assert.equal(saved.items[0].productName, "Test product");
   await admin

@@ -241,6 +241,12 @@ export default function POS({
       setCartOpen(false);
       openInvoice(invoice);
       notify("Sale completed. Your invoice is ready.");
+      const mobile = digitsOnly(phone);
+      if (mobile.length >= 10) {
+        api("/invoices/" + invoice._id + "/whatsapp", { method: "POST" })
+          .then((r) => notify("Invoice sent on WhatsApp to " + r.to))
+          .catch(() => {});
+      }
       await reload();
     } catch (e) {
       setError(e.message);

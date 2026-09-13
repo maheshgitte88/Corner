@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { ZodError } from "zod";
 import { config } from "./config.js";
 import routes from "./routes.js";
+import { publicInvoices } from "./public-invoices.js";
 export const app = express();
 app.disable("x-powered-by");
 app.use(helmet());
@@ -35,6 +36,7 @@ app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 app.use("/api", rateLimit({ windowMs: 60 * 1000, limit: 300 }));
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+app.use("/api/public", publicInvoices);
 app.use("/api", routes);
 app.use("/api", (req, res) =>
   res.status(404).json({ message: "API route not found" }),

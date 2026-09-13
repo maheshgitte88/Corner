@@ -12,6 +12,16 @@ router.param("id", (req, res, next, value) => {
   }
 });
 import { checkout, cancel } from "../services.js";
+import {
+  ensurePublicLink,
+  shareUrl,
+  withShare,
+} from "../public-invoices.js";
+import {
+  sendInvoiceWhatsApp,
+  toE164,
+  vobizConfigured,
+} from "../vobiz-whatsapp.js";
 const dates = (q) => {
   const filter = {};
   if (q.from || q.to) {
@@ -36,15 +46,46 @@ router.get("/invoices", async (req, res) => {
     await req.models.Invoice.find(filter).sort({ createdAt: -1 }).lean(),
   );
 });
-router.post("/invoices", async (req, res) =>
-  res
-    .status(201)
-    .json(await checkout(V.sale.parse(req.body), req.user.id, req.models)),
-);
+router.post("/invoices", async (req, res) => {
+  const invoice = await checkout(
+    V.sale.parse(req.body),
+    req.user.id,
+    req.models,
+  );
+  const link = await ensurePublicLink(req.tenant.id, invoice.id);
+  res.status(201).json(withShare(invoice, link));
+});
 router.get("/invoices/:id", async (req, res) => {
   const i = await req.models.Invoice.findById(req.params.id);
   if (!i) throw V.fail("Invoice not found", 404);
-  res.json(i);
+  const link = await ensurePublicLink(req.tenant.id, i.id);
+  res.json(withShare(i, link));
+});
+router.post("/invoices/:id/share", async (req, res) => {
+  const i = await req.models.Invoice.findById(req.params.id);
+  if (!i) throw V.fail("Invoice not found", 404);
+  const link = await ensurePublicLink(req.tenant.id, i.id);
+  res.json({ shareUrl: shareUrl(link.token) });
+});
+router.post("/invoices/:id/whatsapp", async (req, res) => {
+  const i = await req.models.Invoice.findById(req.params.id);
+  if (!i) throw V.fail("Invoice not found", 404);
+  const phone = toE164(req.body?.to || i.customerSnapshot?.phone);
+  if (!phone)
+    throw V.fail("Add a 10-digit mobile number before sending on WhatsApp");
+  if (!vobizConfigured())
+    throw V.fail("WhatsApp is not configured on this server", 503);
+  const link = await ensurePublicLink(req.tenant.id, i.id);
+  const shop = i.shopSnapshot?.shopName || req.tenant.name || "Counter24";
+  await sendInvoiceWhatsApp({
+    to: phone,
+    name: i.customerSnapshot?.name || "Customer",
+    shop,
+    invoiceNumber: i.invoiceNumber,
+    amount: ((i.grandTotal || 0) / 100).toFixed(2),
+    token: link.token,
+  });
+  res.json({ sent: true, to: phone, shareUrl: shareUrl(link.token) });
 });
 router.post("/invoices/:id/cancel", async (req, res) =>
   res.json(

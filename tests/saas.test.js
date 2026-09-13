@@ -197,6 +197,16 @@ test("tenant A cannot read or mutate tenant B through any record ID", async () =
     .send(sale(a))
     .expect(201);
   assert.equal(invoiceA.invoiceNumber, invoiceB.invoiceNumber);
+  assert.match(invoiceA.shareUrl, /\/b\//);
+  const publicToken = invoiceA.shareUrl.split("/b/")[1];
+  const { body: publicInvoice } = await request(app)
+    .get("/api/public/invoices/" + publicToken)
+    .expect(200);
+  assert.equal(publicInvoice.invoiceNumber, invoiceA.invoiceNumber);
+  assert.equal(publicInvoice.idempotencyKey, undefined);
+  await request(app)
+    .get("/api/public/invoices/notfoundtokenvalue12")
+    .expect(404);
   await clientA.get("/api/invoices/" + invoiceB._id).expect(404);
   await clientA
     .post("/api/invoices/" + invoiceB._id + "/cancel")

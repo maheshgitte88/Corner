@@ -1,6 +1,6 @@
 import { ResponsiveTable } from "./components";
 import React, { useState } from "react";
-import { Printer, ArrowUpRight, Download } from "lucide-react";
+import { Printer, Link2, MessageCircle } from "lucide-react";
 import { api, money, date } from "./api";
 import {
   Modal,
@@ -11,13 +11,151 @@ import {
   Badge,
   Empty,
 } from "./components";
+
+export function InvoicePaper({ invoice, format }) {
+  const shop = invoice.shopSnapshot || {},
+    customer = invoice.customerSnapshot || {};
+  return (
+    <article
+      className={`invoice-paper ${format === "80mm" ? "thermal" : ""}`}
+      id="print-invoice"
+    >
+      <header className="invoice-header">
+        <div>
+          {shop.logoUrl && (
+            <img className="shop-logo" src={shop.logoUrl} alt="Shop logo" />
+          )}
+          <h2>{shop.shopName}</h2>
+          <p>{shop.address}</p>
+          <p>
+            {shop.phone} {shop.email}
+          </p>
+          {shop.gstNumber && <p>GSTIN: {shop.gstNumber}</p>}
+        </div>
+        <div>
+          <span className="eyebrow">SALES INVOICE</span>
+          <h3>{invoice.invoiceNumber}</h3>
+          <p>{date(invoice.createdAt)} IST</p>
+          <b>{invoice.status}</b>
+        </div>
+      </header>
+      <div className="invoice-customer">
+        <span className="eyebrow">BILLED TO</span>
+        <b>{customer.name || "Walk-in Customer"}</b>
+        <p>{customer.phone}</p>
+        <p>{customer.address}</p>
+        {customer.gstNumber && <p>GSTIN: {customer.gstNumber}</p>}
+      </div>
+      <table className="invoice-items">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Qty</th>
+            <th>Rate</th>
+            <th>Disc.</th>
+            <th>Tax</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {invoice.items.map((l, i) => (
+            <tr key={i}>
+              <td>
+                <b>
+                  {l.variantLabel
+                    ? `${l.productName} · ${l.variantLabel}`
+                    : l.productName}
+                </b>
+                <small>{l.sku}</small>
+              </td>
+              <td>
+                {l.quantity} {l.unit}
+              </td>
+              <td>{money(l.unitPrice)}</td>
+              <td>{money(l.discount + l.billDiscount)}</td>
+              <td>
+                {money(l.tax)}
+                <small>{l.taxPercent}%</small>
+              </td>
+              <td>{money(l.lineTotal)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="invoice-bottom">
+        <div>
+          <b>Payment: {invoice.paymentMethod}</b>
+          {invoice.status === "Cancelled" && (
+            <p className="cancellation">
+              Cancelled: {invoice.cancellationReason}
+              <br />
+              {date(invoice.cancelledAt)}
+            </p>
+          )}
+        </div>
+        <div className="totals">
+          <div>
+            <span>Subtotal</span>
+            <b>{money(invoice.subtotal)}</b>
+          </div>
+          <div>
+            <span>Item discounts</span>
+            <b>− {money(invoice.itemDiscount)}</b>
+          </div>
+          <div>
+            <span>Bill discount</span>
+            <b>− {money(invoice.billDiscount)}</b>
+          </div>
+          <div>
+            <span>Tax / GST</span>
+            <b>{money(invoice.tax)}</b>
+          </div>
+          <div>
+            <span>Round off</span>
+            <b>{money(invoice.roundOff)}</b>
+          </div>
+          <div className="grand-total">
+            <b>Grand total</b>
+            <strong>{money(invoice.grandTotal)}</strong>
+          </div>
+          <div>
+            <span>Amount paid</span>
+            <b>{money(invoice.amountPaid)}</b>
+          </div>
+          <div>
+            <span>
+              {invoice.balance < 0 ? "Change returned" : "Balance due"}
+            </span>
+            <b>{money(Math.abs(invoice.balance))}</b>
+          </div>
+        </div>
+      </div>
+      <footer>
+        {shop.invoiceFooter || "Thank you for shopping with us."}
+      </footer>
+    </article>
+  );
+}
+
 export function InvoiceView({ invoice, onClose, onCancel, canCancel = true }) {
   const [format, setFormat] = useState(
       invoice.shopSnapshot?.printFormat || "A4",
     ),
-    [cancel, setCancel] = useState(false);
-  const shop = invoice.shopSnapshot || {},
-    customer = invoice.customerSnapshot || {};
+    [cancel, setCancel] = useState(false),
+    [shareNote, setShareNote] = useState("");
+  const copyLink = async () => {
+    const data = invoice.shareUrl
+      ? { shareUrl: invoice.shareUrl }
+      : await api("/invoices/" + invoice._id + "/share", { method: "POST" });
+    await navigator.clipboard.writeText(data.shareUrl);
+    setShareNote("Invoice link copied");
+  };
+  const sendWhatsApp = async () => {
+    const data = await api("/invoices/" + invoice._id + "/whatsapp", {
+      method: "POST",
+    });
+    setShareNote("Sent on WhatsApp to " + data.to);
+  };
   return (
     <Modal title="Invoice details" onClose={onClose} wide>
       <div className="invoice-toolbar">
@@ -56,6 +194,15 @@ export function InvoiceView({ invoice, onClose, onCancel, canCancel = true }) {
         >
           <Printer size={16} /> Print / save PDF
         </button>
+        <button className="button secondary" onClick={() => copyLink().catch((e) => setShareNote(e.message))}>
+          <Link2 size={16} /> Copy link
+        </button>
+        <button
+          className="button secondary"
+          onClick={() => sendWhatsApp().catch((e) => setShareNote(e.message))}
+        >
+          <MessageCircle size={16} /> WhatsApp
+        </button>
         {invoice.status === "Completed" && canCancel && (
           <button
             className="text-button danger"
@@ -65,6 +212,7 @@ export function InvoiceView({ invoice, onClose, onCancel, canCancel = true }) {
           </button>
         )}
       </div>
+      {shareNote && <p className="invoice-share-note">{shareNote}</p>}
       {cancel && (
         <Form
           label="Cancel sale & restore stock"
@@ -82,120 +230,7 @@ export function InvoiceView({ invoice, onClose, onCancel, canCancel = true }) {
           />
         </Form>
       )}
-      <article
-        className={`invoice-paper ${format === "80mm" ? "thermal" : ""}`}
-        id="print-invoice"
-      >
-        <header className="invoice-header">
-          <div>
-            {shop.logoUrl && (
-              <img className="shop-logo" src={shop.logoUrl} alt="Shop logo" />
-            )}
-            <h2>{shop.shopName}</h2>
-            <p>{shop.address}</p>
-            <p>
-              {shop.phone} {shop.email}
-            </p>
-            {shop.gstNumber && <p>GSTIN: {shop.gstNumber}</p>}
-          </div>
-          <div>
-            <span className="eyebrow">SALES INVOICE</span>
-            <h3>{invoice.invoiceNumber}</h3>
-            <p>{date(invoice.createdAt)} IST</p>
-            <b>{invoice.status}</b>
-          </div>
-        </header>
-        <div className="invoice-customer">
-          <span className="eyebrow">BILLED TO</span>
-          <b>{customer.name || "Walk-in Customer"}</b>
-          <p>{customer.phone}</p>
-          <p>{customer.address}</p>
-          {customer.gstNumber && <p>GSTIN: {customer.gstNumber}</p>}
-        </div>
-        <table className="invoice-items">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Qty</th>
-              <th>Rate</th>
-              <th>Disc.</th>
-              <th>Tax</th>
-              <th>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoice.items.map((l, i) => (
-              <tr key={i}>
-                <td>
-                  <b>{l.variantLabel ? `${l.productName} · ${l.variantLabel}` : l.productName}</b>
-                  <small>{l.sku}</small>
-                </td>
-                <td>
-                  {l.quantity} {l.unit}
-                </td>
-                <td>{money(l.unitPrice)}</td>
-                <td>{money(l.discount + l.billDiscount)}</td>
-                <td>
-                  {money(l.tax)}
-                  <small>{l.taxPercent}%</small>
-                </td>
-                <td>{money(l.lineTotal)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="invoice-bottom">
-          <div>
-            <b>Payment: {invoice.paymentMethod}</b>
-            {invoice.status === "Cancelled" && (
-              <p className="cancellation">
-                Cancelled: {invoice.cancellationReason}
-                <br />
-                {date(invoice.cancelledAt)}
-              </p>
-            )}
-          </div>
-          <div className="totals">
-            <div>
-              <span>Subtotal</span>
-              <b>{money(invoice.subtotal)}</b>
-            </div>
-            <div>
-              <span>Item discounts</span>
-              <b>− {money(invoice.itemDiscount)}</b>
-            </div>
-            <div>
-              <span>Bill discount</span>
-              <b>− {money(invoice.billDiscount)}</b>
-            </div>
-            <div>
-              <span>Tax / GST</span>
-              <b>{money(invoice.tax)}</b>
-            </div>
-            <div>
-              <span>Round off</span>
-              <b>{money(invoice.roundOff)}</b>
-            </div>
-            <div className="grand-total">
-              <b>Grand total</b>
-              <strong>{money(invoice.grandTotal)}</strong>
-            </div>
-            <div>
-              <span>Amount paid</span>
-              <b>{money(invoice.amountPaid)}</b>
-            </div>
-            <div>
-              <span>
-                {invoice.balance < 0 ? "Change returned" : "Balance due"}
-              </span>
-              <b>{money(Math.abs(invoice.balance))}</b>
-            </div>
-          </div>
-        </div>
-        <footer>
-          {shop.invoiceFooter || "Thank you for shopping with us."}
-        </footer>
-      </article>
+      <InvoicePaper invoice={invoice} format={format} />
     </Modal>
   );
 }

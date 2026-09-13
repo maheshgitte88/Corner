@@ -59,3 +59,9 @@ export const PlatformCounter = model("PlatformCounter", {
   key: { type: String, unique: true },
   value: { type: Number, default: 0 },
 });
+export const PublicInvoiceLink = model("PublicInvoiceLink", {
+  token: { type: String, required: true, unique: true },
+  tenantId: { type: Schema.Types.ObjectId, required: true, ref: "Tenant" },
+  invoiceId: { type: Schema.Types.ObjectId, required: true },
+});
+PublicInvoiceLink.schema.index({ tenantId: 1, invoiceId: 1 }, { unique: true });
