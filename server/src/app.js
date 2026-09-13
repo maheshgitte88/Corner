@@ -10,7 +10,33 @@ import routes from "./routes.js";
 import { publicInvoices } from "./public-invoices.js";
 export const app = express();
 app.disable("x-powered-by");
-app.use(helmet());
+const s3ImageOrigin = (() => {
+  try {
+    return process.env.S3_PUBLIC_BASE_URL
+      ? new URL(process.env.S3_PUBLIC_BASE_URL).origin
+      : "";
+  } catch {
+    return "";
+  }
+})();
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "img-src": [
+          "'self'",
+          "data:",
+          "blob:",
+          "https://res.cloudinary.com",
+          "https://*.cloudinary.com",
+          "https://*.amazonaws.com",
+          ...(s3ImageOrigin ? [s3ImageOrigin] : []),
+        ],
+      },
+    },
+  }),
+);
 const origins = new Set([
   config.origin,
   ...(!config.production
