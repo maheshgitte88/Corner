@@ -1,6 +1,6 @@
 import { ResponsiveTable } from "./components";
 import React, { useState } from "react";
-import { Printer, Link2, MessageCircle } from "lucide-react";
+import { Printer, Link2, MessageCircle, ArrowUpRight } from "lucide-react";
 import { api, money, date } from "./api";
 import {
   Modal,
@@ -159,58 +159,80 @@ export function InvoiceView({ invoice, onClose, onCancel, canCancel = true }) {
   return (
     <Modal title="Invoice details" onClose={onClose} wide>
       <div className="invoice-toolbar">
-        <Badge>{invoice.status}</Badge>
-        <select
-          aria-label="Print format"
-          value={format}
-          onChange={(e) => setFormat(e.target.value)}
-        >
-          <option>A4</option>
-          <option>80mm</option>
-        </select>
-        <button
-          className="button secondary"
-          onClick={() => {
-            document.body.dataset.printFormat = format;
-            let style = document.getElementById("print-page-size");
-            if (!style) {
-              style = document.createElement("style");
-              style.id = "print-page-size";
-              document.head.appendChild(style);
-            }
-            const height = Math.max(
-              100,
-              Math.ceil(
-                (document.getElementById("print-invoice").scrollHeight * 25.4) /
-                  96,
-              ) + 12,
-            );
-            style.textContent =
-              format === "80mm"
-                ? `@page { size: 80mm ${height}mm; margin: 4mm; }`
-                : "@page { size: A4; margin: 12mm; }";
-            window.print();
-          }}
-        >
-          <Printer size={16} /> Print / save PDF
-        </button>
-        <button className="button secondary" onClick={() => copyLink().catch((e) => setShareNote(e.message))}>
-          <Link2 size={16} /> Copy link
-        </button>
-        <button
-          className="button secondary"
-          onClick={() => sendWhatsApp().catch((e) => setShareNote(e.message))}
-        >
-          <MessageCircle size={16} /> WhatsApp
-        </button>
-        {invoice.status === "Completed" && canCancel && (
+        <div className="invoice-toolbar-start">
+          <Badge>{invoice.status}</Badge>
+          <label className="invoice-format">
+            <span>Size</span>
+            <select
+              aria-label="Print format"
+              value={format}
+              onChange={(e) => setFormat(e.target.value)}
+            >
+              <option>A4</option>
+              <option>80mm</option>
+            </select>
+          </label>
+        </div>
+        <div className="invoice-toolbar-actions">
           <button
-            className="text-button danger"
-            onClick={() => setCancel(!cancel)}
+            type="button"
+            className="button secondary"
+            onClick={() => {
+              document.body.dataset.printFormat = format;
+              let style = document.getElementById("print-page-size");
+              if (!style) {
+                style = document.createElement("style");
+                style.id = "print-page-size";
+                document.head.appendChild(style);
+              }
+              const height = Math.max(
+                100,
+                Math.ceil(
+                  (document.getElementById("print-invoice").scrollHeight *
+                    25.4) /
+                    96,
+                ) + 12,
+              );
+              style.textContent =
+                format === "80mm"
+                  ? `@page { size: 80mm ${height}mm; margin: 4mm; }`
+                  : "@page { size: A4; margin: 12mm; }";
+              window.print();
+            }}
           >
-            Cancel sale
+            <Printer size={16} />
+            Print
           </button>
-        )}
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() =>
+              copyLink().catch((e) => setShareNote(e.message))
+            }
+          >
+            <Link2 size={16} />
+            Copy link
+          </button>
+          <button
+            type="button"
+            className="button"
+            onClick={() =>
+              sendWhatsApp().catch((e) => setShareNote(e.message))
+            }
+          >
+            <MessageCircle size={16} />
+            WhatsApp
+          </button>
+          {invoice.status === "Completed" && canCancel && (
+            <button
+              type="button"
+              className="button danger"
+              onClick={() => setCancel(!cancel)}
+            >
+              Cancel sale
+            </button>
+          )}
+        </div>
       </div>
       {shareNote && <p className="invoice-share-note">{shareNote}</p>}
       {cancel && (

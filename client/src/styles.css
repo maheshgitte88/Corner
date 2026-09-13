@@ -1164,7 +1164,10 @@ tr:last-child td {
   margin-top: 12px;
 }
 .invoice-share-note {
-  margin: -8px 0 16px;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f3f7ef;
   font-size: 13px;
   color: #3d6b4f;
 }
@@ -1182,11 +1185,73 @@ tr:last-child td {
 .public-invoice-error {
   color: #b66b50;
 }
-.invoice-toolbar .badge {
-  margin-right: auto;
+.invoice-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e8ece3;
 }
-.invoice-toolbar select {
+.invoice-toolbar-start,
+.invoice-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.invoice-toolbar-actions {
+  margin-left: auto;
+}
+.invoice-toolbar .badge {
+  margin: 0;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: #edf3e7;
+  color: #3d6b4f;
+}
+.invoice-format {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 6px 0 12px;
+  border: 1px solid #dfe5dd;
+  border-radius: 10px;
+  background: #fff;
+  color: #5b6b62;
   font-size: 12px;
+  font-weight: 600;
+}
+.invoice-format select {
+  height: 38px;
+  border: 0;
+  padding: 0 10px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #243d35;
+  background: transparent;
+}
+.invoice-toolbar .button {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+}
+.invoice-toolbar .button.danger {
+  background: #fff;
+  border: 1px solid #ead9d3;
+  color: #b66b50;
+}
+.invoice-toolbar .button.danger:hover:not(:disabled) {
+  background: #fdf4f1;
 }
 .danger {
   color: #b66b50;

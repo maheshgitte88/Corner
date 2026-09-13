@@ -448,6 +448,22 @@
     padding: 16px 18px;
     border-bottom: 1px solid #edf0ea;
   }
+  .invoice-toolbar {
+    gap: 12px;
+  }
+  .invoice-toolbar-start,
+  .invoice-toolbar-actions {
+    width: 100%;
+  }
+  .invoice-toolbar-actions {
+    margin-left: 0;
+  }
+  .invoice-toolbar-actions .button {
+    flex: 1 1 calc(50% - 8px);
+  }
+  .invoice-toolbar-actions .button.danger {
+    flex-basis: 100%;
+  }
 }
 
 .pos-product-card {
