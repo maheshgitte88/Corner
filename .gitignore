@@ -5,3 +5,6 @@ coverage/
 .npm-cache/
 .mongodb-binaries/
 .local-demo/
+.website
+/website
+website
